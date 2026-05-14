@@ -1,0 +1,161 @@
+﻿using BusinessLogic.DTOs.User;
+using BusinessLogic.Interfaces;
+using DataAccess.Entities;
+using DataAccess.Interfaces;
+using System;
+using System.Threading.Tasks;
+using BCrypt.Net;
+using System.Text.Json; // For serializing/deserializing RegisterStep1RequestDto
+using BusinessLogic.DTOs; // For EmailSettings
+
+namespace BusinessLogic.Services
+{
+    public class AuthService : IAuthService
+    {
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IUserService _userService;
+        private readonly IRoleService _roleService;
+        private readonly IPlanService _planService;
+        private readonly IEmailService _emailService;
+        private readonly IEmailTemplateService _templateService;
+
+        public AuthService(IUnitOfWork unitOfWork,
+                           IUserService userService,
+                           IRoleService roleService,
+                           IPlanService planService,
+                           IEmailService emailService,
+                           IEmailTemplateService templateService)
+        {
+            _unitOfWork = unitOfWork;
+            _userService = userService;
+            _roleService = roleService;
+            _planService = planService;
+            _emailService = emailService;
+            _templateService = templateService;
+        }
+
+        public async Task<bool> RegisterStep1(RegisterStep1RequestDto request)
+        {
+            // 1. Check if email already exists
+            var existingUser = await _unitOfWork.UserRepository.GetByEmailAsync(request.Email);
+            if (existingUser != null)
+            {
+                throw new ApplicationException("Email already registered.");
+            }
+
+            // 2. Generate OTP
+            string otp = GenerateOtp();
+
+            // 3. Store user's basic info and OTP temporarily
+            var emailVerification = new EmailVerification
+            {
+                Email = request.Email,
+                Otp = otp,
+                ExpiredAt = DateTime.UtcNow.AddMinutes(10), // OTP valid for 10 minutes
+                TemporaryUserData = JsonSerializer.Serialize(request), // Store step1 data
+                IsUsed = false // Ensure it's not marked as used yet
+            };
+            await _unitOfWork.EmailVerificationRepository.AddAsync(emailVerification);
+            await _unitOfWork.SaveAsync();
+
+            // 4. Send OTP to user's email
+            //string subject = "Your OTP for Registration";
+            //string message = $"Your One-Time Password (OTP) for registration is: <b>{otp}</b>. It is valid for 10 minutes.";
+
+            string subject = "Verify your email";
+
+            string message = _templateService.GetRegisterOtpTemplate(request.Email, otp);
+
+            await _emailService.SendEmailAsync(request.Email, subject, message);
+
+            return true;
+        }
+
+        public async Task<string> VerifyOtp(RegisterStep2RequestDto request)
+        {
+            // 1. Find the email verification record
+            var emailVerification = await _unitOfWork.EmailVerificationRepository.GetByEmailAndOtpAsync(request.Email, request.Otp);
+
+            if (emailVerification == null || emailVerification.IsUsed || emailVerification.ExpiredAt < DateTime.UtcNow)
+            {
+                throw new ApplicationException("Invalid or expired OTP.");
+            }
+
+            // 2. Generate verify token
+            string verifyToken = Guid.NewGuid().ToString();
+            emailVerification.VerifyToken = verifyToken;
+            //await _unitOfWork.EmailVerificationRepository.UpdateAsync(emailVerification);
+            await _unitOfWork.SaveAsync();
+
+            return verifyToken;
+        }
+
+        public async Task<bool> RegisterStep3(RegisterStep3RequestDto request)
+        {
+            // 1. Validate verify token and retrieve temporary user data
+            var emailVerification = await _unitOfWork.EmailVerificationRepository.GetByVerifyTokenAsync(request.VerifyToken);
+
+            if (emailVerification == null || emailVerification.IsUsed || emailVerification.ExpiredAt < DateTime.UtcNow || string.IsNullOrEmpty(emailVerification.TemporaryUserData))
+            {
+                throw new ApplicationException("Invalid or expired verification token.");
+            }
+
+            var step1Data = JsonSerializer.Deserialize<RegisterStep1RequestDto>(emailVerification.TemporaryUserData);
+            if (step1Data == null)
+            {
+                throw new ApplicationException("Temporary user data not found.");
+            }
+
+            // 2. Hash the password
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+            // 3. Get default role (STUDENT) and plan (FREE)
+            var defaultRole = await _unitOfWork.RoleRepository.GetRoleByNameAsync("STUDENT");
+            if (defaultRole == null)
+            {
+                throw new ApplicationException("Default 'STUDENT' role not found.");
+            }
+
+            var defaultPlan = await _unitOfWork.PlanRepository.GetPlanByNameAsync("FREE");
+            if (defaultPlan == null)
+            {
+                throw new ApplicationException("Default 'FREE' plan not found.");
+            }
+
+            // 4. Create the actual User entity
+            var newUser = new User
+            {
+                UserId = Guid.NewGuid(),
+                Email = step1Data.Email,
+                Username = step1Data.FullName, // Mapped FullName to Username
+                DOB = step1Data.DateOfBirth, // Mapped DateOfBirth to DOB
+                Address = step1Data.Address,
+                PhoneNumber = step1Data.PhoneNumber,
+                PasswordHash = hashedPassword,
+                RoleId = defaultRole.RoleId, // Corrected to RoleId
+                PlanId = defaultPlan.PlanId, // Corrected to PlanId
+                IsActive = true, // User is active upon registration
+                CreateAt = DateTime.UtcNow, // Corrected to CreateAt
+                UpdateAt = DateTime.UtcNow, // Added UpdateAt
+
+                AvatarUrl = "", // hoặc ảnh default
+                DatePlanRegistration = DateTime.UtcNow
+            };
+
+            await _unitOfWork.UserRepository.AddAsync(newUser);
+            await _unitOfWork.SaveAsync();
+
+            // 5. Clean up temporary data (optional, can be handled by a background job or retention policy)
+            await _unitOfWork.EmailVerificationRepository.DeleteAsync(emailVerification.Id); // Or delete it
+            await _unitOfWork.SaveAsync();
+
+            return true;
+        }
+
+        private string GenerateOtp()
+        {
+            Random random = new Random();
+            return random.Next(100000, 999999).ToString(); // 6-digit OTP
+        }
+    }
+}

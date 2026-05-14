@@ -1,0 +1,86 @@
+# =============================
+# BUILD OUTPUT
+# =============================
+bin/
+obj/
+out/
+publish/
+TestResults/
+
+# =============================
+# VISUAL STUDIO / IDE
+# =============================
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.sln.iml
+
+# =============================
+# LOGS
+# =============================
+*.log
+logs/
+
+# =============================
+# OS FILES
+# =============================
+.DS_Store
+Thumbs.db
+
+# =============================
+# NUGET
+# =============================
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/build/
+*.nuget.props
+*.nuget.targets
+
+# =============================
+# ENV FILES
+# =============================
+.env
+.env.*
+!.env.example
+
+# =============================
+# SENSITIVE CONFIG (IMPORTANT)
+# =============================
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+
+secrets.json
+*.PublishSettings
+*.pubxml
+*.pfx
+*.key
+*.azurePubxml
+
+# =============================
+# DATABASE LOCAL FILES
+# =============================
+*.mdf
+*.ldf
+*.sqlite
+*.db
+
+# =============================
+# TEST / COVERAGE
+# =============================
+coverage/
+*.coverage
+*.coveragexml
+
+# =============================
+# NODE (nếu có frontend)
+# =============================
+node_modules/
+dist/
+build/
