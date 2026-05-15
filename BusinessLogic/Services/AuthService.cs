@@ -5,8 +5,13 @@ using DataAccess.Interfaces;
 using System;
 using System.Threading.Tasks;
 using BCrypt.Net;
-using System.Text.Json; // For serializing/deserializing RegisterStep1RequestDto
-using BusinessLogic.DTOs; // For EmailSettings
+using System.Text.Json;
+using BusinessLogic.DTOs;
+using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace BusinessLogic.Services
 {
@@ -18,13 +23,15 @@ namespace BusinessLogic.Services
         private readonly IPlanService _planService;
         private readonly IEmailService _emailService;
         private readonly IEmailTemplateService _templateService;
+        private readonly IConfiguration _configuration;
 
         public AuthService(IUnitOfWork unitOfWork,
                            IUserService userService,
                            IRoleService roleService,
                            IPlanService planService,
                            IEmailService emailService,
-                           IEmailTemplateService templateService)
+                           IEmailTemplateService templateService,
+                           IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
             _userService = userService;
@@ -32,6 +39,43 @@ namespace BusinessLogic.Services
             _planService = planService;
             _emailService = emailService;
             _templateService = templateService;
+            _configuration = configuration;
+        }
+
+        public async Task<string> Login(LoginDto loginDto)
+        {
+            var user = await _unitOfWork.UserRepository.GetByEmailAsync(loginDto.Email);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+            {
+                throw new ApplicationException("Invalid email or password.");
+            }
+
+            var role = await _unitOfWork.RoleRepository.GetByIdAsync(user.RoleId);
+            var roleName = role?.Name ?? "User";
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, roleName)
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var issuer = _configuration["Jwt:Issuer"];
+            var audience = _configuration["Jwt:Audience"];
+
+            var token = new JwtSecurityToken(
+                issuer,
+                audience,
+                claims,
+                expires: DateTime.Now.AddDays(30),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         public async Task<bool> RegisterStep1(RegisterStep1RequestDto request)
