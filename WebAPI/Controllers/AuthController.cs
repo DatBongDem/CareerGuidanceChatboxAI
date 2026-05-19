@@ -1,8 +1,10 @@
 using BusinessLogic.DTOs.User;
 using BusinessLogic.Interfaces;
+using DataAccess.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace WebAPI.Controllers
@@ -12,7 +14,6 @@ namespace WebAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-
         public AuthController(IAuthService authService)
         {
             _authService = authService;
@@ -37,12 +38,33 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost("logout")]
-        [Authorize] // Requires a valid token to access
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout([FromBody] LogoutDto logoutDto)
         {
-            // For stateless JWT, logout is typically handled client-side by deleting the token.
-            // This endpoint can be used to confirm token validity and provide a server-side acknowledgement.
-            return Ok(new { message = "Logged out successfully." });
+            await _authService.Logout(logoutDto);
+
+            return Ok(new
+            {
+                message = "Logout successful."
+            });
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMe()
+        {
+            var userIdClaim = User
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized();
+            }
+
+            var userId = Guid.Parse(userIdClaim);
+
+            var result = await _authService.GetMe(userId);
+
+            return Ok(result);
         }
     }
 }

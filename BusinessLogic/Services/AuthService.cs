@@ -1,17 +1,18 @@
-﻿using BusinessLogic.DTOs.User;
+﻿using BCrypt.Net;
+using BusinessLogic.DTOs;
+using BusinessLogic.DTOs.User;
 using BusinessLogic.Interfaces;
 using DataAccess.Entities;
 using DataAccess.Interfaces;
-using System;
-using System.Threading.Tasks;
-using BCrypt.Net;
-using System.Text.Json;
-using BusinessLogic.DTOs;
 using Microsoft.Extensions.Configuration;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace BusinessLogic.Services
 {
@@ -42,40 +43,124 @@ namespace BusinessLogic.Services
             _configuration = configuration;
         }
 
-        public async Task<string> Login(LoginDto loginDto)
+        public async Task<LoginResponseDto> Login(LoginDto loginDto)
         {
-            var user = await _unitOfWork.UserRepository.GetByEmailAsync(loginDto.Email);
+            var user = await _unitOfWork.UserRepository
+                .GetByEmailAsync(loginDto.Email);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+            if (user == null ||
+                !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
             {
                 throw new ApplicationException("Invalid email or password.");
             }
 
-            var role = await _unitOfWork.RoleRepository.GetByIdAsync(user.RoleId);
+            if (!user.IsActive)
+            {
+                throw new ApplicationException("Account is inactive.");
+            }
+
+            var role = await _unitOfWork.RoleRepository
+                .GetByIdAsync(user.RoleId);
+
             var roleName = role?.Name ?? "User";
 
+            // ACCESS TOKEN
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, roleName)
-            };
+        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
+        new Claim(ClaimTypes.Email, user.Email),
 
-            var token = new JwtSecurityToken(
-                issuer,
-                audience,
-                claims,
-                expires: DateTime.Now.AddDays(30),
+        new Claim(ClaimTypes.Name, user.Username),
+
+        new Claim(ClaimTypes.Role, roleName),
+
+        new Claim("UserId", user.UserId.ToString())
+    };
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)
+            );
+
+            var creds = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256
+            );
+
+            var accessToken = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(15),
                 signingCredentials: creds
             );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var accessTokenString = new JwtSecurityTokenHandler()
+                .WriteToken(accessToken);
+
+            // REFRESH TOKEN
+            var refreshToken = GenerateRefreshToken();
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                RefreshTokenId = Guid.NewGuid(),
+
+                UserId = user.UserId,
+
+                TokenHash = BCrypt.Net.BCrypt.HashPassword(refreshToken),
+
+                CreatedAt = DateTime.UtcNow,
+
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+
+                DeviceInfo = "Unknown",
+
+                IpAddress = "Unknown"
+            };
+
+            await _unitOfWork.RefreshTokenRepository
+                .AddAsync(refreshTokenEntity);
+
+            user.LastLoginTime = DateTime.UtcNow;
+
+            await _unitOfWork.SaveAsync();
+
+            return new LoginResponseDto
+            {
+                AccessToken = accessTokenString,
+
+                RefreshToken = refreshToken
+            };
+        }
+
+        public async Task Logout(LogoutDto logoutDto)
+        {
+            var refreshTokenEntity = await _unitOfWork
+                .RefreshTokenRepository
+                .GetByTokenAsync(logoutDto.RefreshToken);
+
+            if (refreshTokenEntity == null)
+            {
+                throw new ApplicationException("Invalid refresh token.");
+            }
+
+            refreshTokenEntity.RevokedAt = DateTime.UtcNow;
+
+            await _unitOfWork
+                .RefreshTokenRepository
+                .UpdateAsync(refreshTokenEntity);
+
+            await _unitOfWork.SaveAsync();
+        }
+        private string GenerateRefreshToken()
+        {
+            var randomBytes = new byte[64];
+
+            using var rng = RandomNumberGenerator.Create();
+
+            rng.GetBytes(randomBytes);
+
+            return Convert.ToHexString(randomBytes);
         }
 
         public async Task<bool> RegisterStep1(RegisterStep1RequestDto request)
@@ -200,6 +285,40 @@ namespace BusinessLogic.Services
         {
             Random random = new Random();
             return random.Next(100000, 999999).ToString(); // 6-digit OTP
+        }
+        public async Task<MeResponseDto> GetMe(Guid userId)
+        {
+            var user = await _unitOfWork.UserRepository
+                .GetByIdAsync(userId);
+
+            if (user == null)
+            {
+                throw new ApplicationException("User not found.");
+            }
+
+            var role = await _unitOfWork.RoleRepository
+                .GetByIdAsync(user.RoleId);
+
+            return new MeResponseDto
+            {
+                UserId = user.UserId,
+
+                Username = user.Username,
+
+                Email = user.Email,
+
+                Address = user.Address,
+
+                PhoneNumber = user.PhoneNumber,
+
+                DOB = user.DOB,
+
+                AvatarUrl = user.AvatarUrl,
+
+                Role = role?.Name ?? "User",
+
+                LastLoginTime = user.LastLoginTime
+            };
         }
     }
 }
