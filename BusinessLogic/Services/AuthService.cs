@@ -152,6 +152,8 @@ namespace BusinessLogic.Services
 
             await _unitOfWork.SaveAsync();
         }
+        
+
         private string GenerateRefreshToken()
         {
             var randomBytes = new byte[64];
@@ -285,6 +287,140 @@ namespace BusinessLogic.Services
         {
             Random random = new Random();
             return random.Next(100000, 999999).ToString(); // 6-digit OTP
+        }
+        public async Task<LoginResponseDto> RefreshToken(
+    string refreshToken)
+        {
+            var refreshTokenEntity = await _unitOfWork
+                .RefreshTokenRepository
+                .GetByTokenAsync(refreshToken);
+
+            if (refreshTokenEntity == null)
+            {
+                throw new ApplicationException(
+                    "Invalid refresh token.");
+            }
+
+            if (refreshTokenEntity.RevokedAt != null)
+            {
+                throw new ApplicationException(
+                    "Refresh token revoked.");
+            }
+
+            if (refreshTokenEntity.ExpiresAt <= DateTime.UtcNow)
+            {
+                throw new ApplicationException(
+                    "Refresh token expired.");
+            }
+
+            var user = await _unitOfWork.UserRepository
+                .GetByIdAsync(refreshTokenEntity.UserId);
+
+            if (user == null)
+            {
+                throw new ApplicationException(
+                    "User not found.");
+            }
+
+            var role = await _unitOfWork.RoleRepository
+                .GetByIdAsync(user.RoleId);
+
+            var roleName = role?.Name ?? "User";
+
+            // REVOKE OLD TOKEN
+            refreshTokenEntity.RevokedAt =
+                DateTime.UtcNow;
+
+            await _unitOfWork
+                .RefreshTokenRepository
+                .UpdateAsync(refreshTokenEntity);
+
+            // CREATE ACCESS TOKEN
+            var claims = new[]
+            {
+        new Claim(
+            ClaimTypes.NameIdentifier,
+            user.UserId.ToString()),
+
+        new Claim(
+            ClaimTypes.Email,
+            user.Email),
+
+        new Claim(
+            ClaimTypes.Name,
+            user.Username),
+
+        new Claim(
+            ClaimTypes.Role,
+            roleName),
+
+        new Claim(
+            "UserId",
+            user.UserId.ToString())
+    };
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(
+                    _configuration["Jwt:Key"]!)
+            );
+
+            var creds = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256
+            );
+
+            var accessToken = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+
+                audience: _configuration["Jwt:Audience"],
+
+                claims: claims,
+
+                expires: DateTime.UtcNow.AddMinutes(15),
+
+                signingCredentials: creds
+            );
+
+            var accessTokenString =
+                new JwtSecurityTokenHandler()
+                    .WriteToken(accessToken);
+
+            // CREATE NEW REFRESH TOKEN
+            var newRefreshToken =
+                GenerateRefreshToken();
+
+            var newRefreshTokenEntity =
+                new RefreshToken
+                {
+                    RefreshTokenId = Guid.NewGuid(),
+
+                    UserId = user.UserId,
+
+                    TokenHash = BCrypt.Net.BCrypt
+                        .HashPassword(newRefreshToken),
+
+                    CreatedAt = DateTime.UtcNow,
+
+                    ExpiresAt = DateTime.UtcNow
+                        .AddDays(7),
+
+                    DeviceInfo = "Unknown",
+
+                    IpAddress = "Unknown"
+                };
+
+            await _unitOfWork
+                .RefreshTokenRepository
+                .AddAsync(newRefreshTokenEntity);
+
+            await _unitOfWork.SaveAsync();
+
+            return new LoginResponseDto
+            {
+                AccessToken = accessTokenString,
+
+                RefreshToken = newRefreshToken
+            };
         }
         public async Task<MeResponseDto> GetMe(Guid userId)
         {

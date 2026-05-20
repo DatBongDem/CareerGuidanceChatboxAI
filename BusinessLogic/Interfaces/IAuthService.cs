@@ -11,5 +11,6 @@ namespace BusinessLogic.Interfaces
         Task<bool> RegisterStep3(RegisterStep3RequestDto request);
         Task Logout(LogoutDto logoutDto);
         Task<MeResponseDto> GetMe(Guid userId);
+        Task<LoginResponseDto> RefreshToken(string refreshToken);
     }
 }
