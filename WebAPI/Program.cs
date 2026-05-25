@@ -78,6 +78,9 @@ namespace WebAPI
                     });
             });
 
+            // =========================
+            // CONTROLLERS
+            // =========================
             builder.Services.AddControllers();
 
             // =========================
@@ -169,22 +172,25 @@ namespace WebAPI
             var app = builder.Build();
 
             // =========================
-            // MIDDLEWARE PIPELINE
+            // SWAGGER
             // =========================
-            if (app.Environment.IsDevelopment())
+            app.UseSwagger();
+
+            app.UseSwaggerUI(c =>
             {
-                app.UseSwagger();
+                c.SwaggerEndpoint(
+                    "/swagger/v1/swagger.json",
+                    "4S_BE API V1"
+                );
+            });
 
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint(
-                        "/swagger/v1/swagger.json",
-                        "4S_BE API V1"
-                    );
-                });
+            // =========================
+            // HTTPS
+            // =========================
+            if (!app.Environment.IsProduction())
+            {
+                app.UseHttpsRedirection();
             }
-
-            app.UseHttpsRedirection();
 
             // =========================
             // CORS
@@ -198,7 +204,12 @@ namespace WebAPI
 
             app.UseAuthorization();
 
+            // =========================
+            // ROUTES
+            // =========================
             app.MapControllers();
+
+            app.MapGet("/", () => "4S_BE API Running");
 
             app.Run();
         }
