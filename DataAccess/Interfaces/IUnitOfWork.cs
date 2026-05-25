@@ -9,6 +9,8 @@ namespace DataAccess.Interfaces
         IUserRepository UserRepository { get; }
         IRoleRepository RoleRepository { get; }
         IPlanRepository PlanRepository { get; }
+
+        IRefreshTokenRepository RefreshTokenRepository { get; }
         IEmailVerificationRepository EmailVerificationRepository { get; }
         Task<int> SaveAsync();
     }

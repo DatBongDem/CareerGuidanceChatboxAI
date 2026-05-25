@@ -1,7 +1,8 @@
 using BusinessLogic.DTOs.User;
 using BusinessLogic.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using System; // Added for Guid
+using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WebAPI.Controllers
 {

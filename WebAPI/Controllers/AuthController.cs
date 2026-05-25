@@ -1,8 +1,10 @@
 using BusinessLogic.DTOs.User;
 using BusinessLogic.Interfaces;
+using DataAccess.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace WebAPI.Controllers
@@ -12,37 +14,118 @@ namespace WebAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-
         public AuthController(IAuthService authService)
         {
             _authService = authService;
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        public async Task<IActionResult> Login(LoginDto loginDto)
         {
             try
             {
-                var token = await _authService.Login(loginDto);
-                return Ok(new { Token = token });
+                var result = await _authService.Login(loginDto);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Login successful",
+                    data = result
+                });
             }
             catch (ApplicationException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Internal server error"
+                });
             }
         }
 
+        [Authorize]
         [HttpPost("logout")]
-        [Authorize] // Requires a valid token to access
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
-            // For stateless JWT, logout is typically handled client-side by deleting the token.
-            // This endpoint can be used to confirm token validity and provide a server-side acknowledgement.
-            return Ok(new { message = "Logged out successfully." });
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return BadRequest("Refresh token not found.");
+            }
+
+            await _authService.Logout(
+                new LogoutDto
+                {
+                    RefreshToken = refreshToken
+                });
+
+            Response.Cookies.Delete("refreshToken");
+
+            return Ok(new
+            {
+                message = "Logout successful."
+            });
+        }
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken =
+                Request.Cookies["refreshToken"];
+
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _authService
+                .RefreshToken(refreshToken);
+
+            Response.Cookies.Append(
+                "refreshToken",
+                result.RefreshToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+
+                    Secure = true,
+
+                    SameSite = SameSiteMode.Strict,
+
+                    Expires = DateTime.UtcNow.AddDays(7)
+                });
+
+            return Ok(new
+            {
+                accessToken = result.AccessToken
+            });
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMe()
+        {
+            var userIdClaim = User
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized();
+            }
+
+            var userId = Guid.Parse(userIdClaim);
+
+            var result = await _authService.GetMe(userId);
+
+            return Ok(result);
         }
     }
 }

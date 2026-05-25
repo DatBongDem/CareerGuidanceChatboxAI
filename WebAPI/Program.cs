@@ -8,7 +8,6 @@ using DataAccess.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using System.Text;
 
@@ -38,10 +37,16 @@ namespace WebAPI
             // DEPENDENCY INJECTION
             // =========================
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
             builder.Services.AddScoped<IUserService, UserService>();
+
             builder.Services.AddScoped<IRoleService, RoleService>();
+
             builder.Services.AddScoped<IPlanService, PlanService>();
-            builder.Services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
+
+            builder.Services.AddScoped<IEmailVerificationRepository,
+                EmailVerificationRepository>();
+
             builder.Services.AddScoped<IAuthService, AuthService>();
 
             builder.Services.Configure<EmailSettings>(
@@ -49,31 +54,67 @@ namespace WebAPI
             );
 
             builder.Services.AddScoped<IEmailService, EmailService>();
-            builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+
+            builder.Services.AddScoped<IEmailTemplateService,
+                EmailTemplateService>();
+
+            // =========================
+            // CORS
+            // =========================
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend",
+                    policy =>
+                    {
+                        policy
+                            .WithOrigins(
+                                "http://localhost:5173",
+                                "http://localhost:5174",
+                                "https://4s-company.vercel.app"
+                            )
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials();
+                    });
+            });
 
             builder.Services.AddControllers();
 
             // =========================
             // JWT AUTHENTICATION
             // =========================
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
+            builder.Services
+                .AddAuthentication(
+                    JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
+                    options.TokenValidationParameters =
+                        new TokenValidationParameters
+                        {
+                            ValidateIssuer = true,
 
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                            ValidateAudience = true,
 
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])
-                    )
-                };
-            });
+                            ValidateLifetime = true,
+
+                            ValidateIssuerSigningKey = true,
+
+                            ValidIssuer =
+                                builder.Configuration["Jwt:Issuer"],
+
+                            ValidAudience =
+                                builder.Configuration["Jwt:Audience"],
+
+                            IssuerSigningKey =
+                                new SymmetricSecurityKey(
+                                    Encoding.UTF8.GetBytes(
+                                        builder.Configuration["Jwt:Key"]!
+                                    )
+                                ),
+
+                            ClockSkew = TimeSpan.Zero
+                        };
+                });
 
             // =========================
             // SWAGGER + JWT SUPPORT
@@ -88,32 +129,41 @@ namespace WebAPI
                     Version = "v1"
                 });
 
-                // JWT Bearer Definition
-                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = ParameterLocation.Header,
-                    Description = "Enter JWT token like this: Bearer {your token}"
-                });
-
-                // JWT Requirement
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
+                c.AddSecurityDefinition("Bearer",
+                    new OpenApiSecurityScheme
                     {
-                        new OpenApiSecurityScheme
+                        Name = "Authorization",
+
+                        Type = SecuritySchemeType.Http,
+
+                        Scheme = "bearer",
+
+                        BearerFormat = "JWT",
+
+                        In = ParameterLocation.Header,
+
+                        Description =
+                            "Enter JWT token like this: Bearer {token}"
+                    });
+
+                c.AddSecurityRequirement(
+                    new OpenApiSecurityRequirement
+                    {
                         {
-                            Reference = new OpenApiReference
+                            new OpenApiSecurityScheme
                             {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        new string[] { }
-                    }
-                });
+                                Reference =
+                                    new OpenApiReference
+                                    {
+                                        Type =
+                                            ReferenceType.SecurityScheme,
+
+                                        Id = "Bearer"
+                                    }
+                            },
+                            Array.Empty<string>()
+                        }
+                    });
             });
 
             var app = builder.Build();
@@ -124,15 +174,28 @@ namespace WebAPI
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
+
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "4S_BE API V1");
+                    c.SwaggerEndpoint(
+                        "/swagger/v1/swagger.json",
+                        "4S_BE API V1"
+                    );
                 });
             }
 
             app.UseHttpsRedirection();
 
+            // =========================
+            // CORS
+            // =========================
+            app.UseCors("AllowFrontend");
+
+            // =========================
+            // AUTH
+            // =========================
             app.UseAuthentication();
+
             app.UseAuthorization();
 
             app.MapControllers();

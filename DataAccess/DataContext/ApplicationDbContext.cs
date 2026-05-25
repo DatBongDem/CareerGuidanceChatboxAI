@@ -13,6 +13,7 @@ namespace DataAccess.DataContext
         public DbSet<Role> Roles { get; set; }
         public DbSet<Plan> Plans { get; set; }
 
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<EmailVerification> EmailVerifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
