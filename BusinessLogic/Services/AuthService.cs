@@ -48,6 +48,7 @@ namespace BusinessLogic.Services
             var user = await _unitOfWork.UserRepository
                 .GetByEmailAsync(loginDto.Email);
 
+            // Không nói rõ sai email hay password
             if (user == null ||
                 !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
             {
@@ -64,17 +65,14 @@ namespace BusinessLogic.Services
 
             var roleName = role?.Name ?? "User";
 
-            // ACCESS TOKEN
+            // ================= ACCESS TOKEN =================
+
             var claims = new[]
             {
         new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-
         new Claim(ClaimTypes.Email, user.Email),
-
         new Claim(ClaimTypes.Name, user.Username),
-
         new Claim(ClaimTypes.Role, roleName),
-
         new Claim("UserId", user.UserId.ToString())
     };
 
@@ -98,23 +96,18 @@ namespace BusinessLogic.Services
             var accessTokenString = new JwtSecurityTokenHandler()
                 .WriteToken(accessToken);
 
-            // REFRESH TOKEN
+            // ================= REFRESH TOKEN =================
+
             var refreshToken = GenerateRefreshToken();
 
             var refreshTokenEntity = new RefreshToken
             {
                 RefreshTokenId = Guid.NewGuid(),
-
                 UserId = user.UserId,
-
                 TokenHash = BCrypt.Net.BCrypt.HashPassword(refreshToken),
-
                 CreatedAt = DateTime.UtcNow,
-
                 ExpiresAt = DateTime.UtcNow.AddDays(7),
-
                 DeviceInfo = "Unknown",
-
                 IpAddress = "Unknown"
             };
 
@@ -128,7 +121,6 @@ namespace BusinessLogic.Services
             return new LoginResponseDto
             {
                 AccessToken = accessTokenString,
-
                 RefreshToken = refreshToken
             };
         }
