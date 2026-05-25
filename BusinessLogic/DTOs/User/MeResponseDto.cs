@@ -25,5 +25,7 @@ namespace BusinessLogic.DTOs.User
         public string Role { get; set; } = string.Empty;
 
         public DateTime? LastLoginTime { get; set; }
+
+        public string CurrentPlan { get; set; } = string.Empty;
     }
 }

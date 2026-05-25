@@ -1,4 +1,4 @@
-namespace BusinessLogic.DTOs
+namespace BusinessLogic.DTOs.Role
 {
     public class RoleDto
     {

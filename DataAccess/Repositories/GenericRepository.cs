@@ -1,7 +1,11 @@
 using DataAccess.DataContext;
 using DataAccess.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace DataAccess.Repositories
 {
@@ -40,6 +44,34 @@ namespace DataAccess.Repositories
             return await _dbSet.FindAsync(id);
         }
 
+        public async Task<IEnumerable<TEntity>> GetAsync(
+            Expression<Func<TEntity, bool>>? filter = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            string includeProperties = "")
+        {
+            IQueryable<TEntity> query = _dbSet;
+
+            if (filter != null)
+            {
+                query = query.Where(filter);
+            }
+
+            foreach (var includeProperty in includeProperties.Split
+                (new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                query = query.Include(includeProperty);
+            }
+
+            if (orderBy != null)
+            {
+                return await orderBy(query).ToListAsync();
+            }
+            else
+            {
+                return await query.ToListAsync();
+            }
+        }
+
         public Task UpdateAsync(TEntity entity)
         {
             _dbSet.Update(entity);
@@ -47,3 +79,4 @@ namespace DataAccess.Repositories
         }
     }
 }
+

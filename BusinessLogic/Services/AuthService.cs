@@ -264,13 +264,11 @@ namespace BusinessLogic.Services
                 PhoneNumber = step1Data.PhoneNumber,
                 PasswordHash = hashedPassword,
                 RoleId = defaultRole.RoleId, // Corrected to RoleId
-                PlanId = defaultPlan.PlanId, // Corrected to PlanId
                 IsActive = true, // User is active upon registration
                 CreateAt = DateTime.UtcNow, // Corrected to CreateAt
                 UpdateAt = DateTime.UtcNow, // Added UpdateAt
 
                 AvatarUrl = "", // hoặc ảnh default
-                DatePlanRegistration = DateTime.UtcNow
             };
 
             await _unitOfWork.UserRepository.AddAsync(newUser);
@@ -435,6 +433,15 @@ namespace BusinessLogic.Services
             var role = await _unitOfWork.RoleRepository
                 .GetByIdAsync(user.RoleId);
 
+            var planHistories = await _unitOfWork.PlanHistoryRepository.GetByUserIdAsync(userId);
+
+            var currentPlan = planHistories
+                .Where(ph => ph.Expiry > DateTime.UtcNow)
+                .OrderByDescending(ph => ph.Expiry)
+                .FirstOrDefault();
+
+            var planName = currentPlan?.NamePlan ?? "FREE";
+
             return new MeResponseDto
             {
                 UserId = user.UserId,
@@ -453,7 +460,9 @@ namespace BusinessLogic.Services
 
                 Role = role?.Name ?? "User",
 
-                LastLoginTime = user.LastLoginTime
+                LastLoginTime = user.LastLoginTime,
+
+                CurrentPlan = planName
             };
         }
     }
