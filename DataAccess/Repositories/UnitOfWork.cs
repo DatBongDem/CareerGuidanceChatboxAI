@@ -14,6 +14,8 @@ namespace DataAccess.Repositories
 
         public IPlanRepository PlanRepository { get; private set; }
 
+        public IPlanHistoryRepository PlanHistoryRepository { get; private set; }
+
         public IEmailVerificationRepository EmailVerificationRepository { get; private set; }
 
         public IRefreshTokenRepository RefreshTokenRepository { get; private set; }
@@ -27,6 +29,8 @@ namespace DataAccess.Repositories
             RoleRepository = new RoleRepository(_context);
 
             PlanRepository = new PlanRepository(_context);
+
+            PlanHistoryRepository = new PlanHistoryRepository(_context);
 
             EmailVerificationRepository = new EmailVerificationRepository(_context);
 
