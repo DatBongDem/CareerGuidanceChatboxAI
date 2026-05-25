@@ -22,26 +22,33 @@ namespace WebAPI.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
-            var result = await _authService.Login(loginDto);
-
-            Response.Cookies.Append(
-                "refreshToken",
-                result.RefreshToken,
-                new CookieOptions
-                {
-                    HttpOnly = true,
-
-                    Secure = true,
-
-                    SameSite = SameSiteMode.Strict,
-
-                    Expires = DateTime.UtcNow.AddDays(7)
-                });
-
-            return Ok(new
+            try
             {
-                accessToken = result.AccessToken
-            });
+                var result = await _authService.Login(loginDto);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Login successful",
+                    data = result
+                });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Internal server error"
+                });
+            }
         }
 
         [Authorize]
