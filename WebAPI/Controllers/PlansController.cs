@@ -1,8 +1,10 @@
-using BusinessLogic.DTOs;
 using BusinessLogic.DTOs.Plan;
 using BusinessLogic.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace WebAPI.Controllers
@@ -36,12 +38,48 @@ namespace WebAPI.Controllers
             return Ok(plan);
         }
 
-        [HttpPost]
-        public async Task<ActionResult<PlanDto>> PostPlan(CreatePlanDto createPlanDto)
+        [Authorize]
+        [HttpGet("history")]
+        public async Task<ActionResult<IEnumerable<PlanHistoryDto>>> GetUserPlanHistory()
         {
-            var newPlan = await _planService.CreatePlan(createPlanDto);
-            return CreatedAtAction(nameof(GetPlan), new { id = newPlan.Id }, newPlan);
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var history = await _planService.GetPlanHistoryByUserIdAsync(userId);
+            return Ok(history);
         }
+
+        [Authorize]
+        [HttpPost("register-vip")]
+        public async Task<IActionResult> RegisterVipPlan()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                var newPlanHistory = await _planService.RegisterVipPlanAsync(userId);
+                return Ok(newPlanHistory);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+        }
+
+
+        //[HttpPost]
+        //public async Task<ActionResult<PlanDto>> PostPlan(CreatePlanDto createPlanDto)
+        //{
+        //    var newPlan = await _planService.CreatePlan(createPlanDto);
+        //    return CreatedAtAction(nameof(GetPlan), new { id = newPlan.Id }, newPlan);
+        //}
 
         [HttpPut("{id}")]
         public async Task<IActionResult> PutPlan(Guid id, UpdatePlanDto updatePlanDto)
@@ -50,11 +88,11 @@ namespace WebAPI.Controllers
             return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePlan(Guid id)
-        {
-            await _planService.DeletePlan(id);
-            return NoContent();
-        }
+        //[HttpDelete("{id}")]
+        //public async Task<IActionResult> DeletePlan(Guid id)
+        //{
+        //    await _planService.DeletePlan(id);
+        //    return NoContent();
+        //}
     }
 }

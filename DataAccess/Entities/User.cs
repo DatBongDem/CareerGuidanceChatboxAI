@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DataAccess.Entities
 {
@@ -32,16 +32,20 @@ namespace DataAccess.Entities
 
         [ForeignKey("Role")]
         public Guid RoleId { get; set; }
+
         public Role? Role { get; set; }
 
-        [ForeignKey("Plan")]
-        public Guid? PlanId { get; set; }
-        public Plan? Plan { get; set; }
-
-        public DateTime DatePlanRegistration { get; set; }
+        // XÓA
+        // public Guid? PlanId { get; set; }
+        // public Plan? Plan { get; set; }
+        // public DateTime DatePlanRegistration { get; set; }
 
         // Navigation Property
         public ICollection<RefreshToken> RefreshTokens { get; set; }
             = new List<RefreshToken>();
+
+        // Thêm mới
+        public ICollection<PlanHistory> PlanHistories { get; set; }
+            = new List<PlanHistory>();
     }
 }
