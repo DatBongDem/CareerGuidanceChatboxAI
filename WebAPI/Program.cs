@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using CloudinaryDotNet;
 
 namespace WebAPI
 {
@@ -54,6 +55,7 @@ namespace WebAPI
             );
 
             builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<IAvatarService, AvatarService>();
 
             builder.Services.AddScoped<IEmailTemplateService,
                 EmailTemplateService>();
@@ -118,6 +120,21 @@ namespace WebAPI
                             ClockSkew = TimeSpan.Zero
                         };
                 });
+            // =========================
+            // Cloudinary
+            // =========================
+            builder.Services.AddSingleton(sp =>
+            {
+                var config = sp.GetRequiredService<IConfiguration>();
+
+                var account = new Account(
+                    config["Cloudinary:CloudName"],
+                    config["Cloudinary:ApiKey"],
+                    config["Cloudinary:ApiSecret"]
+                );
+
+                return new Cloudinary(account);
+            });
 
             // =========================
             // SWAGGER + JWT SUPPORT
