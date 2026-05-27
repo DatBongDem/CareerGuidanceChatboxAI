@@ -1,3 +1,4 @@
+using DataAccess.Shares;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -18,7 +19,9 @@ namespace BusinessLogic.DTOs.User
         [Required]
         public string Address { get; set; }
 
-        [Required]
+        public string Gender { get; set; } = StatusEnum.Other;
+
+            [Required]
         [Phone]
         public string PhoneNumber { get; set; }
     }

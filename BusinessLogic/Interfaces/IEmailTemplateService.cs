@@ -9,6 +9,7 @@ namespace BusinessLogic.Interfaces
     public interface IEmailTemplateService
     {
         string GetRegisterOtpTemplate(string email, string otp);
+        string GetForgotPasswordOtpTemplate(string email, string otp);
 
     }
 }

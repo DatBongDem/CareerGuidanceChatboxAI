@@ -74,16 +74,33 @@ namespace BusinessLogic.Services
 
             _mapper.Map(updateUserDto, user);
 
-            // Handle password update if provided
-            if (!string.IsNullOrEmpty(updateUserDto.Password))
-            {
-                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(updateUserDto.Password);
-            }
+           
             user.UpdateAt = DateTime.UtcNow; // Update timestamp
 
             await _unitOfWork.UserRepository.UpdateAsync(user);
             await _unitOfWork.SaveAsync();
             return true;
+        }
+
+        public async Task<User?> UpdateProfileAsync(Guid userId, UpdateProfileDto updateProfileDto)
+        {
+            var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                return null;
+            }
+
+            // Map the fields from DTO to the user entity
+            _mapper.Map(updateProfileDto, user);
+
+            // Set audit fields
+            user.UpdateAt = DateTime.UtcNow;
+            user.UpdatedBy = userId;
+
+            await _unitOfWork.UserRepository.UpdateAsync(user);
+            await _unitOfWork.SaveAsync();
+
+            return user;
         }
     }
 }
