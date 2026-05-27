@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BusinessLogic.DTOs.User
 {
-    public class UpdateUserDto
+    public class UpdateProfileDto
     {
         [StringLength(50)]
         public string? Username { get; set; }
@@ -14,15 +14,8 @@ namespace BusinessLogic.DTOs.User
         [Phone]
         public string? PhoneNumber { get; set; }
 
-        public DateTime? DOB { get; set; }
-
-        //public string? AvatarUrl { get; set; }
-
         public string Gender { get; set; }
 
-        public bool? IsActive { get; set; }
-
-        public Guid? RoleId { get; set; }
-
+        public DateTime? DOB { get; set; }
     }
 }

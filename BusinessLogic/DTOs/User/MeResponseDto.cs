@@ -16,6 +16,8 @@ namespace BusinessLogic.DTOs.User
 
         public string Address { get; set; } = string.Empty;
 
+        public string Gender { get; set; }
+
         public string PhoneNumber { get; set; } = string.Empty;
 
         public DateTime DOB { get; set; }

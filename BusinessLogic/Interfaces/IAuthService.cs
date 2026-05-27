@@ -1,4 +1,5 @@
 using BusinessLogic.DTOs.User;
+using BusinessLogic.DTOs.User.ForgetPassword;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Interfaces
@@ -12,5 +13,9 @@ namespace BusinessLogic.Interfaces
         Task Logout(LogoutDto logoutDto);
         Task<MeResponseDto> GetMe(Guid userId);
         Task<LoginResponseDto> RefreshToken(string refreshToken);
+        Task<MeResponseDto> UpdateProfileAsync(Guid userId, UpdateProfileDto updateProfileDto);
+        Task ForgotPassword(ForgotPasswordDto dto);
+        Task ResetPassword(ResetPasswordDto dto);
+        Task ChangePassword(string email, ChangePasswordDto dto);
     }
 }

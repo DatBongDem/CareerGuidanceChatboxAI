@@ -25,10 +25,18 @@ namespace BusinessLogic
                     )
                 );
 
+            CreateMap<User, MeResponseDto>()
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role != null ? src.Role.Name : "User"));
+
             CreateMap<CreateUserDto, User>();
 
             CreateMap<UpdateUserDto, User>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+                .ForAllMembers(opts =>
+                    opts.Condition((src, dest, srcMember) => srcMember != null)
+                );
+
+            CreateMap<UpdateProfileDto, User>()
                 .ForAllMembers(opts =>
                     opts.Condition((src, dest, srcMember) => srcMember != null)
                 );
