@@ -12,5 +12,7 @@ namespace DataAccess.Interfaces
         Task<IEnumerable<PlanHistory>> GetByUserIdAsync(Guid userId);
 
         Task<PlanHistory?> GetLatestByUserIdAsync(Guid userId);
+
+        Task<PlanHistory?> GetLatestActiveByUserIdAsync(Guid userId);
     }
 }

@@ -19,6 +19,9 @@ namespace DataAccess.Repositories
         public IEmailVerificationRepository EmailVerificationRepository { get; }
 
         public IChatHistoryRepository  ChatHistoryRepository { get; }
+        public IQuestionCategoryRepository QuestionCategoryRepository { get; }
+        public IQuestionRepository QuestionRepository { get; }
+        public IQuestionOptionRepository QuestionOptionRepository { get; }
 
         public UnitOfWork(
             ApplicationDbContext context,
@@ -32,7 +35,10 @@ namespace DataAccess.Repositories
                 refreshTokenRepository,
             IEmailVerificationRepository
                 emailVerificationRepository,
-            IChatHistoryRepository chatHistoryRepository)
+            IChatHistoryRepository chatHistoryRepository,
+            IQuestionCategoryRepository questionCategoryRepository,
+            IQuestionRepository questionRepository,
+            IQuestionOptionRepository questionOptionRepository)
         {
             _context = context;
 
@@ -54,6 +60,9 @@ namespace DataAccess.Repositories
             EmailVerificationRepository =
                 emailVerificationRepository;
             ChatHistoryRepository = chatHistoryRepository;
+            QuestionCategoryRepository = questionCategoryRepository;
+            QuestionRepository = questionRepository;
+            QuestionOptionRepository = questionOptionRepository;
         }
 
         public async Task<int> SaveAsync()

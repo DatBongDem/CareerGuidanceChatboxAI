@@ -42,6 +42,15 @@ namespace DataAccess.Repositories
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<PlanHistory?> GetLatestActiveByUserIdAsync(Guid userId)
+        {
+            return await _dbSet
+                .Include(x => x.Plan)
+                .Where(x => x.UserId == userId && x.IsActive && x.ExpiryDate > DateTime.UtcNow)
+                .OrderByDescending(x => x.StartDate)
+                .FirstOrDefaultAsync();
+        }
+
         public override async Task<PlanHistory?>
             GetByIdAsync(Guid id)
         {

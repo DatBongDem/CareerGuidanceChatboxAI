@@ -22,6 +22,12 @@ namespace DataAccess.Interfaces
 
         IChatHistoryRepository ChatHistoryRepository { get; }
 
+        IQuestionCategoryRepository QuestionCategoryRepository { get; }
+
+        IQuestionRepository QuestionRepository { get; }
+
+        IQuestionOptionRepository QuestionOptionRepository { get; }
+
         Task<int> SaveAsync();
     }
 }

@@ -626,20 +626,13 @@ namespace BusinessLogic.Services
             var response =
                 _mapper.Map<MeResponseDto>(user);
 
-            var planHistories =
+            var currentPlanHistory =
                 await _unitOfWork
                     .PlanHistoryRepository
-                    .GetByUserIdAsync(userId);
-
-            var currentPlan = planHistories
-                .Where(ph =>
-                    ph.IsActive &&
-                    ph.ExpiryDate > DateTime.UtcNow)
-                .OrderByDescending(ph => ph.ExpiryDate)
-                .FirstOrDefault();
+                    .GetLatestActiveByUserIdAsync(userId);
 
             response.CurrentPlan =
-                currentPlan?.Plan?.Name ?? "FREE";
+                currentPlanHistory?.Plan?.Name ?? "FREE";
 
             return response;
         }
@@ -672,20 +665,13 @@ namespace BusinessLogic.Services
                 _mapper.Map<MeResponseDto>(
                     userWithRole);
 
-            var planHistories =
+            var currentPlanHistory =
                 await _unitOfWork
                     .PlanHistoryRepository
-                    .GetByUserIdAsync(userId);
-
-            var currentPlan = planHistories
-                .Where(ph =>
-                    ph.IsActive &&
-                    ph.ExpiryDate > DateTime.UtcNow)
-                .OrderByDescending(ph => ph.ExpiryDate)
-                .FirstOrDefault();
+                    .GetLatestActiveByUserIdAsync(userId);
 
             response.CurrentPlan =
-                currentPlan?.Plan?.Name ?? "FREE";
+                currentPlanHistory?.Plan?.Name ?? "FREE";
 
             return response;
         }

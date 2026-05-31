@@ -12,5 +12,7 @@ namespace BusinessLogic.Interfaces
         Task<CreatePaymentResponseDto> CreatePaymentAsync(Guid userId, Guid planId);
 
         Task ConfirmPaymentAsync(string transactionCode);
+
+        Task CancelPaymentAsync(string transactionCode);
     }
 }
