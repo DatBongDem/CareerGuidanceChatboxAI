@@ -72,12 +72,12 @@ namespace BusinessLogic
                 );
 
             CreateMap<PlanHistory, PlanHistoryDto>()
-                .ForMember(dest => dest.Status,
-                    opt => opt.MapFrom(src =>
-                        DateTime.UtcNow > src.Expiry
-                            ? StatusEnum.Expired
-                            : StatusEnum.Active
-                    ));
+     .ForMember(dest => dest.Status,
+         opt => opt.MapFrom(src =>
+             DateTime.UtcNow > src.ExpiryDate
+                 ? StatusEnum.Expired
+                 : StatusEnum.Active
+         ));
         }
     }
 }

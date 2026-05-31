@@ -13,7 +13,7 @@ namespace DataAccess.Repositories
 
         public override async Task<User?> GetByIdAsync(Guid id)
         {
-            return await _dbSet.FirstOrDefaultAsync(u => u.UserId == id);
+            return await _dbSet.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
         }
 
         public async Task<User?> GetByEmailAsync(string email)

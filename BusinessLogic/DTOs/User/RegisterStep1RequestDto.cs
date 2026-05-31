@@ -21,7 +21,7 @@ namespace BusinessLogic.DTOs.User
 
         public string Gender { get; set; } = StatusEnum.Other;
 
-            [Required]
+        [Required]
         [Phone]
         public string PhoneNumber { get; set; }
     }

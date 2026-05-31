@@ -38,40 +38,40 @@ namespace WebAPI.Controllers
             return Ok(plan);
         }
 
-        [Authorize]
-        [HttpGet("history")]
-        public async Task<ActionResult<IEnumerable<PlanHistoryDto>>> GetUserPlanHistory()
-        {
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
-            {
-                return Unauthorized();
-            }
+        //[Authorize]
+        //[HttpGet("history")]
+        //public async Task<ActionResult<IEnumerable<PlanHistoryDto>>> GetUserPlanHistory()
+        //{
+        //    var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        //    {
+        //        return Unauthorized();
+        //    }
 
-            var history = await _planService.GetPlanHistoryByUserIdAsync(userId);
-            return Ok(history);
-        }
+        //    var history = await _planService.GetPlanHistoryByUserIdAsync(userId);
+        //    return Ok(history);
+        //}
 
-        [Authorize]
-        [HttpPost("register-vip")]
-        public async Task<IActionResult> RegisterVipPlan()
-        {
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
-            {
-                return Unauthorized();
-            }
+        //[Authorize]
+        //[HttpPost("register-vip")]
+        //public async Task<IActionResult> RegisterVipPlan()
+        //{
+        //    var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        //    {
+        //        return Unauthorized();
+        //    }
 
-            try
-            {
-                var newPlanHistory = await _planService.RegisterVipPlanAsync(userId);
-                return Ok(newPlanHistory);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { message = ex.Message });
-            }
-        }
+        //    try
+        //    {
+        //        var newPlanHistory = await _planService.RegisterVipPlanAsync(userId);
+        //        return Ok(newPlanHistory);
+        //    }
+        //    catch (InvalidOperationException ex)
+        //    {
+        //        return Conflict(new { message = ex.Message });
+        //    }
+        //}
 
 
         //[HttpPost]

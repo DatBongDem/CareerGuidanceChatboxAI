@@ -611,8 +611,7 @@ namespace BusinessLogic.Services
 
         // ========================= GET ME =========================
 
-        public async Task<MeResponseDto> GetMe(
-            Guid userId)
+        public async Task<MeResponseDto> GetMe(Guid userId)
         {
             var user = await _unitOfWork
                 .UserRepository
@@ -634,12 +633,13 @@ namespace BusinessLogic.Services
 
             var currentPlan = planHistories
                 .Where(ph =>
-                    ph.Expiry > DateTime.UtcNow)
-                .OrderByDescending(ph => ph.Expiry)
+                    ph.IsActive &&
+                    ph.ExpiryDate > DateTime.UtcNow)
+                .OrderByDescending(ph => ph.ExpiryDate)
                 .FirstOrDefault();
 
             response.CurrentPlan =
-                currentPlan?.NamePlan ?? "FREE";
+                currentPlan?.Plan?.Name ?? "FREE";
 
             return response;
         }
@@ -647,9 +647,9 @@ namespace BusinessLogic.Services
         // ========================= UPDATE PROFILE =========================
 
         public async Task<MeResponseDto>
-            UpdateProfileAsync(
-                Guid userId,
-                UpdateProfileDto updateProfileDto)
+    UpdateProfileAsync(
+        Guid userId,
+        UpdateProfileDto updateProfileDto)
         {
             var updatedUser =
                 await _userService
@@ -679,12 +679,13 @@ namespace BusinessLogic.Services
 
             var currentPlan = planHistories
                 .Where(ph =>
-                    ph.Expiry > DateTime.UtcNow)
-                .OrderByDescending(ph => ph.Expiry)
+                    ph.IsActive &&
+                    ph.ExpiryDate > DateTime.UtcNow)
+                .OrderByDescending(ph => ph.ExpiryDate)
                 .FirstOrDefault();
 
             response.CurrentPlan =
-                currentPlan?.NamePlan ?? "FREE";
+                currentPlan?.Plan?.Name ?? "FREE";
 
             return response;
         }
