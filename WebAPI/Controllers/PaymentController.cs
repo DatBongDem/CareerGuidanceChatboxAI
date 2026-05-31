@@ -55,6 +55,26 @@ namespace WebAPI.Controllers
                     message = "Payment success"
                 });
             }
+
+            [HttpPost("cancel")]
+            public async Task<IActionResult>
+                CancelPayment(string code)
+            {
+                try
+                {
+                    await _paymentService
+                        .CancelPaymentAsync(code);
+
+                    return Ok(new
+                    {
+                        message = "Payment cancelled successfully"
+                    });
+                }
+                catch (ApplicationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+            }
         }
     
 }

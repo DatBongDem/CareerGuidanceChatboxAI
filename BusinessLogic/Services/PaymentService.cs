@@ -21,6 +21,12 @@ namespace BusinessLogic.Services
 
         public async Task<CreatePaymentResponseDto>  CreatePaymentAsync(Guid userId, Guid planId)
         {
+            var existingActivePlan = await _unitOfWork.PlanHistoryRepository.GetLatestActiveByUserIdAsync(userId);
+            if (existingActivePlan != null)
+            {
+                throw new ApplicationException("You already have an active plan.");
+            }
+
             var user = await _unitOfWork
                 .UserRepository
                 .GetByIdAsync(userId);
@@ -102,10 +108,6 @@ namespace BusinessLogic.Services
 
             transaction.PaidAt = DateTime.UtcNow;
 
-            await _unitOfWork
-                .PaymentTransactionRepository
-                .UpdateAsync(transaction);
-
             var planHistory =
                 new PlanHistory
                 {
@@ -114,9 +116,7 @@ namespace BusinessLogic.Services
                     PlanId = transaction.PlanId,
                     StartDate = DateTime.UtcNow,
                     ExpiryDate =
-                        DateTime.UtcNow.AddMonths(
-                            transaction.Plan!
-                                .DurationInMonths),
+                        DateTime.UtcNow.AddDays(30),
                     IsActive = true,
                     TransactionId =
                         transaction.TransactionId
@@ -128,6 +128,37 @@ namespace BusinessLogic.Services
 
             await _unitOfWork
                 .SaveAsync();
+        }
+
+        public async Task CancelPaymentAsync(string transactionCode)
+        {
+            var transaction =
+                await _unitOfWork
+                    .PaymentTransactionRepository
+                    .GetByTransactionCodeAsync(
+                        transactionCode);
+
+            if (transaction == null)
+            {
+                throw new ApplicationException(
+                    "Transaction not found");
+            }
+
+            if (transaction.Status == "Success")
+            {
+                throw new ApplicationException(
+                    "Cannot cancel a successful payment.");
+            }
+
+            if (transaction.Status == "Cancelled")
+            {
+                throw new ApplicationException(
+                    "Payment has already been cancelled.");
+            }
+
+            transaction.Status = "Cancelled";
+
+            await _unitOfWork.SaveAsync();
         }
     }
 }

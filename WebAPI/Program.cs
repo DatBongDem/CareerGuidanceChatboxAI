@@ -47,6 +47,9 @@ namespace WebAPI
             builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             builder.Services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
             builder.Services.AddScoped<IChatHistoryRepository, ChatHistoryRepository>();
+            builder.Services.AddScoped<IQuestionCategoryRepository, QuestionCategoryRepository>();
+            builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+            builder.Services.AddScoped<IQuestionOptionRepository, QuestionOptionRepository>();
 
             builder.Services.Configure<EmailSettings>(
                 builder.Configuration.GetSection("EmailSettings")
@@ -60,6 +63,9 @@ namespace WebAPI
             builder.Services.AddScoped<IAvatarService, AvatarService>();
             builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
             builder.Services.AddScoped<IChatService, ChatService>();
+            builder.Services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
+            builder.Services.AddScoped<IQuestionService, QuestionService>();
+            builder.Services.AddScoped<IQuestionOptionService, QuestionOptionService>();
 
             builder.Services.AddHttpClient();
 
@@ -75,7 +81,7 @@ namespace WebAPI
                             .WithOrigins(
                                 "http://localhost:5173",
                                 "http://localhost:5174",
-                                "https://4s-company.vercel.app"
+                                "https://4s-company.vercel.app"                              
                             )
                             .AllowAnyHeader()
                             .AllowAnyMethod()

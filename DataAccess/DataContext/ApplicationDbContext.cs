@@ -27,9 +27,30 @@ namespace DataAccess.DataContext
 
         public DbSet<ChatHistory> ChatHistories { get; set; }
 
+        public DbSet<QuestionCategory> QuestionCategories { get; set; }
+
+        public DbSet<Question> Questions { get; set; }
+
+        public DbSet<QuestionOption> QuestionOptions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // =========================
+            //  Chat AI
+            // =========================
+            modelBuilder.Entity<QuestionCategory>()
+                .HasMany(qc => qc.Questions)
+                .WithOne(q => q.Category)
+                .HasForeignKey(q => q.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Question>()
+                .HasMany(q => q.Options)
+                .WithOne(o => o.Question)
+                .HasForeignKey(o => o.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // =========================
             // User - Role
@@ -48,6 +69,15 @@ namespace DataAccess.DataContext
                 .WithMany(u => u.PlanHistories)
                 .HasForeignKey(ph => ph.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // =========================
+            // Plan - PlanHistory
+            // =========================
+            modelBuilder.Entity<PlanHistory>()
+                .HasOne(ph => ph.Plan)
+                .WithMany() // Assuming Plan doesn't have a collection of PlanHistories
+                .HasForeignKey(ph => ph.PlanId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // =========================
             // EmailVerification
