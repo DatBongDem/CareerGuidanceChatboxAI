@@ -8,38 +8,67 @@ namespace DataAccess.Repositories
     {
         private readonly ApplicationDbContext _context;
 
-        public IUserRepository UserRepository { get; private set; }
+        public IUserRepository UserRepository { get; }
+        public IRoleRepository RoleRepository { get; }
+        public IPlanRepository PlanRepository { get; }
+        public IPlanHistoryRepository PlanHistoryRepository { get; }
+        public IPaymentTransactionRepository PaymentTransactionRepository { get; }
 
-        public IRoleRepository RoleRepository { get; private set; }
+        public IRefreshTokenRepository RefreshTokenRepository { get; }
 
-        public IPlanRepository PlanRepository { get; private set; }
+        public IEmailVerificationRepository EmailVerificationRepository { get; }
 
-        public IPlanHistoryRepository PlanHistoryRepository { get; private set; }
+        public IChatHistoryRepository  ChatHistoryRepository { get; }
+        public IQuestionCategoryRepository QuestionCategoryRepository { get; }
+        public IQuestionRepository QuestionRepository { get; }
+        public IQuestionOptionRepository QuestionOptionRepository { get; }
 
-        public IEmailVerificationRepository EmailVerificationRepository { get; private set; }
-
-        public IRefreshTokenRepository RefreshTokenRepository { get; private set; }
-
-        public UnitOfWork(ApplicationDbContext context)
+        public UnitOfWork(
+            ApplicationDbContext context,
+            IUserRepository userRepository,
+            IRoleRepository roleRepository,
+            IPlanRepository planRepository,
+            IPlanHistoryRepository planHistoryRepository,
+            IPaymentTransactionRepository
+                paymentTransactionRepository,
+            IRefreshTokenRepository
+                refreshTokenRepository,
+            IEmailVerificationRepository
+                emailVerificationRepository,
+            IChatHistoryRepository chatHistoryRepository,
+            IQuestionCategoryRepository questionCategoryRepository,
+            IQuestionRepository questionRepository,
+            IQuestionOptionRepository questionOptionRepository)
         {
             _context = context;
 
-            UserRepository = new UserRepository(_context);
+            UserRepository = userRepository;
 
-            RoleRepository = new RoleRepository(_context);
+            RoleRepository = roleRepository;
 
-            PlanRepository = new PlanRepository(_context);
+            PlanRepository = planRepository;
 
-            PlanHistoryRepository = new PlanHistoryRepository(_context);
+            PlanHistoryRepository =
+                planHistoryRepository;
 
-            EmailVerificationRepository = new EmailVerificationRepository(_context);
+            PaymentTransactionRepository =
+                paymentTransactionRepository;
 
-            RefreshTokenRepository = new RefreshTokenRepository(_context);
+            RefreshTokenRepository =
+                refreshTokenRepository;
+
+            EmailVerificationRepository =
+                emailVerificationRepository;
+            ChatHistoryRepository = chatHistoryRepository;
+            QuestionCategoryRepository = questionCategoryRepository;
+            QuestionRepository = questionRepository;
+            QuestionOptionRepository = questionOptionRepository;
         }
 
         public async Task<int> SaveAsync()
         {
-            return await _context.SaveChangesAsync();
+            return await _context
+                .SaveChangesAsync(); 
         }
 
         public void Dispose()

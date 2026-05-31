@@ -1,9 +1,13 @@
 using AutoMapper;
 using BusinessLogic.DTOs;
+using BusinessLogic.DTOs.ChatAI.Question;
+using BusinessLogic.DTOs.ChatAI.QuestionCategory;
+using BusinessLogic.DTOs.ChatAI.QuestionOption;
 using BusinessLogic.DTOs.Plan;
 using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.User;
 using DataAccess.Entities;
+using DataAccess.Entities.ChatAI;
 using DataAccess.Shares;
 
 namespace BusinessLogic
@@ -25,10 +29,18 @@ namespace BusinessLogic
                     )
                 );
 
+            CreateMap<User, MeResponseDto>()
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role != null ? src.Role.Name : "User"));
+
             CreateMap<CreateUserDto, User>();
 
             CreateMap<UpdateUserDto, User>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+                .ForAllMembers(opts =>
+                    opts.Condition((src, dest, srcMember) => srcMember != null)
+                );
+
+            CreateMap<UpdateProfileDto, User>()
                 .ForAllMembers(opts =>
                     opts.Condition((src, dest, srcMember) => srcMember != null)
                 );
@@ -64,12 +76,27 @@ namespace BusinessLogic
                 );
 
             CreateMap<PlanHistory, PlanHistoryDto>()
-                .ForMember(dest => dest.Status,
-                    opt => opt.MapFrom(src =>
-                        DateTime.UtcNow > src.Expiry
-                            ? StatusEnum.Expired
-                            : StatusEnum.Active
-                    ));
+     .ForMember(dest => dest.Status,
+         opt => opt.MapFrom(src =>
+             DateTime.UtcNow > src.ExpiryDate
+                 ? StatusEnum.Expired
+                 : StatusEnum.Active
+         ));
+
+            // =========================
+            // Chat AI mappings
+            // =========================
+            CreateMap<QuestionCategory, QuestionCategoryDto>();
+            CreateMap<CreateQuestionCategoryDto, QuestionCategory>();
+            CreateMap<UpdateQuestionCategoryDto, QuestionCategory>();
+
+            CreateMap<Question, QuestionDto>();
+            CreateMap<CreateQuestionDto, Question>();
+            CreateMap<UpdateQuestionDto, Question>();
+
+            CreateMap<QuestionOption, QuestionOptionDto>();
+            CreateMap<CreateQuestionOptionDto, QuestionOption>();
+            CreateMap<UpdateQuestionOptionDto, QuestionOption>();
         }
     }
 }

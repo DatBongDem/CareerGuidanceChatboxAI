@@ -15,10 +15,15 @@ namespace DataAccess.Shares
 
         public const string Expired = "Expired";
 
+        // --Gender--
 
+        public const string Male = "Male";
+        public const string Female = "Female";
+        public const string Other = "Other";
 
-
-
+        // --Question Active--
+        public const string Yes = "Yes";
+        public const string No = "No";
 
     }
 

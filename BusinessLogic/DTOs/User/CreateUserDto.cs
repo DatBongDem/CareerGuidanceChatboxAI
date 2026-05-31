@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using DataAccess.Shares;
 
 namespace BusinessLogic.DTOs.User
 {
@@ -19,6 +20,8 @@ namespace BusinessLogic.DTOs.User
 
         [StringLength(255)]
         public string Address { get; set; } = string.Empty;
+
+        public string Gender { get; set; } = StatusEnum.Other;
 
         [Phone]
         public string PhoneNumber { get; set; } = string.Empty;

@@ -8,5 +8,6 @@ namespace DataAccess.Interfaces
     {
         Task<EmailVerification?> GetByEmailAndOtpAsync(string email, string otp);
         Task<EmailVerification?> GetByVerifyTokenAsync(string verifyToken);
+        Task<List<EmailVerification>> GetByEmailAsync(string email);
     }
 }

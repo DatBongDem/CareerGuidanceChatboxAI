@@ -11,19 +11,22 @@ namespace DataAccess.Entities
     {
         public Guid Id { get; set; }
 
-        [ForeignKey("User")]
         public Guid UserId { get; set; }
 
         public User? User { get; set; }
 
-        public decimal Price { get; set; }
+        public Guid PlanId { get; set; }
 
-        public DateTime TransactionDate { get; set; }
+        public Plan? Plan { get; set; }
 
-        public string Method { get; set; } = string.Empty;
+        public DateTime StartDate { get; set; }
 
-        public string NamePlan { get; set; } = string.Empty;
+        public DateTime ExpiryDate { get; set; }
 
-        public DateTime Expiry { get; set; }
+        public bool IsActive { get; set; }
+
+        public Guid TransactionId { get; set; }
+
+        public PaymentTransaction? Transaction { get; set; }
     }
 }
