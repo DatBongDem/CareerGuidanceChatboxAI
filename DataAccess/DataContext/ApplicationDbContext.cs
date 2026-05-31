@@ -1,4 +1,5 @@
 using DataAccess.Entities;
+using DataAccess.Entities.ChatAI;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.DataContext
@@ -21,6 +22,10 @@ namespace DataAccess.DataContext
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         public DbSet<EmailVerification> EmailVerifications { get; set; }
+
+        public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+
+        public DbSet<ChatHistory> ChatHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

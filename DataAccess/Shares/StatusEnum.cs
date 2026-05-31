@@ -21,9 +21,6 @@ namespace DataAccess.Shares
         public const string Female = "Female";
         public const string Other = "Other";
 
-
-
-
     }
 
 }

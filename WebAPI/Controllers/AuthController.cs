@@ -136,7 +136,7 @@ namespace WebAPI.Controllers
             return Ok(result);
         }
         [Authorize]
-        [HttpPost("upload")]
+        [HttpPost("upload-avatar")]
         public async Task<IActionResult> Upload(IFormFile file)
         {
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
