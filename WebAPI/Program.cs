@@ -39,6 +39,7 @@ namespace WebAPI
             // =========================
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+
             builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
             builder.Services.AddScoped<IUniversityService, UniversityService>();
 
@@ -53,15 +54,36 @@ namespace WebAPI
 
             builder.Services.AddScoped<IAuthService, AuthService>();
 
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+            builder.Services.AddScoped<IPlanRepository, PlanRepository>();
+            builder.Services.AddScoped<IPlanHistoryRepository, PlanHistoryRepository>();
+            builder.Services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
+            builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            builder.Services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
+            builder.Services.AddScoped<IChatHistoryRepository, ChatHistoryRepository>();
+            builder.Services.AddScoped<IQuestionCategoryRepository, QuestionCategoryRepository>();
+            builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+            builder.Services.AddScoped<IQuestionOptionRepository, QuestionOptionRepository>();
+
+
             builder.Services.Configure<EmailSettings>(
                 builder.Configuration.GetSection("EmailSettings")
             );
-
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IRoleService, RoleService>();
+            builder.Services.AddScoped<IPlanService, PlanService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IAvatarService, AvatarService>();
+            builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+            builder.Services.AddScoped<IChatService, ChatService>();
+            builder.Services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
+            builder.Services.AddScoped<IQuestionService, QuestionService>();
+            builder.Services.AddScoped<IQuestionOptionService, QuestionOptionService>();
 
-            builder.Services.AddScoped<IEmailTemplateService,
-                EmailTemplateService>();
+            builder.Services.AddHttpClient();
 
             // =========================
             // CORS
@@ -75,7 +97,7 @@ namespace WebAPI
                             .WithOrigins(
                                 "http://localhost:5173",
                                 "http://localhost:5174",
-                                "https://4s-company.vercel.app"
+                                "https://4s-company.vercel.app"                              
                             )
                             .AllowAnyHeader()
                             .AllowAnyMethod()

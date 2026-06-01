@@ -1,9 +1,13 @@
 using AutoMapper;
 using BusinessLogic.DTOs;
+using BusinessLogic.DTOs.ChatAI.Question;
+using BusinessLogic.DTOs.ChatAI.QuestionCategory;
+using BusinessLogic.DTOs.ChatAI.QuestionOption;
 using BusinessLogic.DTOs.Plan;
 using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.User;
 using DataAccess.Entities;
+using DataAccess.Entities.ChatAI;
 using DataAccess.Shares;
 
 namespace BusinessLogic
@@ -72,12 +76,27 @@ namespace BusinessLogic
                 );
 
             CreateMap<PlanHistory, PlanHistoryDto>()
-                .ForMember(dest => dest.Status,
-                    opt => opt.MapFrom(src =>
-                        DateTime.UtcNow > src.Expiry
-                            ? StatusEnum.Expired
-                            : StatusEnum.Active
-                    ));
+     .ForMember(dest => dest.Status,
+         opt => opt.MapFrom(src =>
+             DateTime.UtcNow > src.ExpiryDate
+                 ? StatusEnum.Expired
+                 : StatusEnum.Active
+         ));
+
+            // =========================
+            // Chat AI mappings
+            // =========================
+            CreateMap<QuestionCategory, QuestionCategoryDto>();
+            CreateMap<CreateQuestionCategoryDto, QuestionCategory>();
+            CreateMap<UpdateQuestionCategoryDto, QuestionCategory>();
+
+            CreateMap<Question, QuestionDto>();
+            CreateMap<CreateQuestionDto, Question>();
+            CreateMap<UpdateQuestionDto, Question>();
+
+            CreateMap<QuestionOption, QuestionOptionDto>();
+            CreateMap<CreateQuestionOptionDto, QuestionOption>();
+            CreateMap<UpdateQuestionOptionDto, QuestionOption>();
         }
     }
 }

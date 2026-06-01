@@ -9,17 +9,56 @@ using System.Threading.Tasks;
 
 namespace DataAccess.Repositories
 {
-    public class PlanHistoryRepository : GenericRepository<PlanHistory, Guid>, IPlanHistoryRepository
+    public class PlanHistoryRepository
+        : GenericRepository<PlanHistory, Guid>,
+          IPlanHistoryRepository
     {
-        public PlanHistoryRepository(ApplicationDbContext context) : base(context)
+        public PlanHistoryRepository(
+            ApplicationDbContext context)
+            : base(context)
         {
         }
 
-        public async Task<IEnumerable<PlanHistory>> GetByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<PlanHistory>>
+            GetByUserIdAsync(Guid userId)
         {
-            return await _context.PlanHistories
-                .Where(ph => ph.UserId == userId)
+            return await _dbSet
+                .Include(x => x.User)
+                .Include(x => x.Plan)
+                .Include(x => x.Transaction)
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.StartDate)
                 .ToListAsync();
+        }
+
+        public async Task<PlanHistory?>
+            GetLatestByUserIdAsync(Guid userId)
+        {
+            return await _dbSet
+                .Include(x => x.Plan)
+                .Include(x => x.Transaction)
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.StartDate)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<PlanHistory?> GetLatestActiveByUserIdAsync(Guid userId)
+        {
+            return await _dbSet
+                .Include(x => x.Plan)
+                .Where(x => x.UserId == userId && x.IsActive && x.ExpiryDate > DateTime.UtcNow)
+                .OrderByDescending(x => x.StartDate)
+                .FirstOrDefaultAsync();
+        }
+
+        public override async Task<PlanHistory?>
+            GetByIdAsync(Guid id)
+        {
+            return await _dbSet
+                .Include(x => x.User)
+                .Include(x => x.Plan)
+                .Include(x => x.Transaction)
+                .FirstOrDefaultAsync(x => x.Id == id);
         }
     }
 }

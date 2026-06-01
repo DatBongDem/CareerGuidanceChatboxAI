@@ -66,47 +66,47 @@ namespace BusinessLogic.Services
         //    await _unitOfWork.SaveAsync();
         //}
 
-        public async Task<IEnumerable<PlanHistoryDto>> GetPlanHistoryByUserIdAsync(Guid userId)
-        {
-            var planHistories = await _unitOfWork.PlanHistoryRepository.GetAsync(
-                filter: h => h.UserId == userId,
-                orderBy: q => q.OrderByDescending(h => h.TransactionDate)
-            );
-            return _mapper.Map<IEnumerable<PlanHistoryDto>>(planHistories);
-        }
+        //public async Task<IEnumerable<PlanHistoryDto>> GetPlanHistoryByUserIdAsync(Guid userId)
+        //{
+        //    var planHistories = await _unitOfWork.PlanHistoryRepository.GetAsync(
+        //        filter: h => h.UserId == userId,
+        //        orderBy: q => q.OrderByDescending(h => h.TransactionDate)
+        //    );
+        //    return _mapper.Map<IEnumerable<PlanHistoryDto>>(planHistories);
+        //}
 
-        public async Task<PlanHistoryDto> RegisterVipPlanAsync(Guid userId)
-        {
-            var activePlans = await _unitOfWork.PlanHistoryRepository.GetAsync(
-                filter: h => h.UserId == userId && h.Expiry > DateTime.UtcNow
-            );
+        //public async Task<PlanHistoryDto> RegisterVipPlanAsync(Guid userId)
+        //{
+        //    var activePlans = await _unitOfWork.PlanHistoryRepository.GetAsync(
+        //        filter: h => h.UserId == userId && h.Expiry > DateTime.UtcNow
+        //    );
 
-            if (activePlans.Any())
-            {
-                throw new InvalidOperationException("User already has an active plan.");
-            }
+        //    if (activePlans.Any())
+        //    {
+        //        throw new InvalidOperationException("User already has an active plan.");
+        //    }
 
-            var vipPlan = await _unitOfWork.PlanRepository.GetPlanByNameAsync("VIP");
-            if (vipPlan == null)
-            {
-                throw new InvalidOperationException("VIP plan not found.");
-            }
+        //    var vipPlan = await _unitOfWork.PlanRepository.GetPlanByNameAsync("PRO");
+        //    if (vipPlan == null)
+        //    {
+        //        throw new InvalidOperationException("PRO plan not found.");
+        //    }
 
-            var transactionDate = DateTime.UtcNow;
-            var newPlanHistory = new PlanHistory
-            {
-                UserId = userId,
-                Price = vipPlan.Price,
-                TransactionDate = transactionDate,
-                Method = "bank",
-                NamePlan = "VIP",
-                Expiry = transactionDate.AddDays(30)
-            };
+        //    var transactionDate = DateTime.UtcNow;
+        //    var newPlanHistory = new PlanHistory
+        //    {
+        //        UserId = userId,
+        //        Price = vipPlan.Price,
+        //        TransactionDate = transactionDate,
+        //        Method = "bank",
+        //        NamePlan = "PRO",
+        //        Expiry = transactionDate.AddDays(30)
+        //    };
 
-            await _unitOfWork.PlanHistoryRepository.AddAsync(newPlanHistory);
-            await _unitOfWork.SaveAsync();
+        //    await _unitOfWork.PlanHistoryRepository.AddAsync(newPlanHistory);
+        //    await _unitOfWork.SaveAsync();
 
-            return _mapper.Map<PlanHistoryDto>(newPlanHistory);
-        }
+        //    return _mapper.Map<PlanHistoryDto>(newPlanHistory);
+        //}
     }
 }

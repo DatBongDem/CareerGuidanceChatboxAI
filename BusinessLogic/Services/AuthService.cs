@@ -611,8 +611,7 @@ namespace BusinessLogic.Services
 
         // ========================= GET ME =========================
 
-        public async Task<MeResponseDto> GetMe(
-            Guid userId)
+        public async Task<MeResponseDto> GetMe(Guid userId)
         {
             var user = await _unitOfWork
                 .UserRepository
@@ -627,19 +626,13 @@ namespace BusinessLogic.Services
             var response =
                 _mapper.Map<MeResponseDto>(user);
 
-            var planHistories =
+            var currentPlanHistory =
                 await _unitOfWork
                     .PlanHistoryRepository
-                    .GetByUserIdAsync(userId);
-
-            var currentPlan = planHistories
-                .Where(ph =>
-                    ph.Expiry > DateTime.UtcNow)
-                .OrderByDescending(ph => ph.Expiry)
-                .FirstOrDefault();
+                    .GetLatestActiveByUserIdAsync(userId);
 
             response.CurrentPlan =
-                currentPlan?.NamePlan ?? "FREE";
+                currentPlanHistory?.Plan?.Name ?? "FREE";
 
             return response;
         }
@@ -647,9 +640,9 @@ namespace BusinessLogic.Services
         // ========================= UPDATE PROFILE =========================
 
         public async Task<MeResponseDto>
-            UpdateProfileAsync(
-                Guid userId,
-                UpdateProfileDto updateProfileDto)
+    UpdateProfileAsync(
+        Guid userId,
+        UpdateProfileDto updateProfileDto)
         {
             var updatedUser =
                 await _userService
@@ -672,19 +665,13 @@ namespace BusinessLogic.Services
                 _mapper.Map<MeResponseDto>(
                     userWithRole);
 
-            var planHistories =
+            var currentPlanHistory =
                 await _unitOfWork
                     .PlanHistoryRepository
-                    .GetByUserIdAsync(userId);
-
-            var currentPlan = planHistories
-                .Where(ph =>
-                    ph.Expiry > DateTime.UtcNow)
-                .OrderByDescending(ph => ph.Expiry)
-                .FirstOrDefault();
+                    .GetLatestActiveByUserIdAsync(userId);
 
             response.CurrentPlan =
-                currentPlan?.NamePlan ?? "FREE";
+                currentPlanHistory?.Plan?.Name ?? "FREE";
 
             return response;
         }
