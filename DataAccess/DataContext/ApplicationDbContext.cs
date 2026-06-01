@@ -22,6 +22,8 @@ namespace DataAccess.DataContext
 
         public DbSet<EmailVerification> EmailVerifications { get; set; }
 
+        public DbSet<University> Universities { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

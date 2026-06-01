@@ -1,4 +1,4 @@
-using DataAccess.DataContext;
+﻿using DataAccess.DataContext;
 using DataAccess.Interfaces;
 using System.Threading.Tasks;
 
@@ -20,6 +20,9 @@ namespace DataAccess.Repositories
 
         public IRefreshTokenRepository RefreshTokenRepository { get; private set; }
 
+      
+        public IUniversityRepository Universities { get; private set; }
+
         public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -35,6 +38,9 @@ namespace DataAccess.Repositories
             EmailVerificationRepository = new EmailVerificationRepository(_context);
 
             RefreshTokenRepository = new RefreshTokenRepository(_context);
+
+         
+            Universities = new UniversityRepository(_context);
         }
 
         public async Task<int> SaveAsync()

@@ -39,6 +39,9 @@ namespace WebAPI
             // =========================
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+            builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
+            builder.Services.AddScoped<IUniversityService, UniversityService>();
+
             builder.Services.AddScoped<IUserService, UserService>();
 
             builder.Services.AddScoped<IRoleService, RoleService>();
