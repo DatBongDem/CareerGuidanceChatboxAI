@@ -36,6 +36,12 @@ namespace DataAccess.DataContext
 
         public DbSet<QuestionOption> QuestionOptions { get; set; }
 
+        public DbSet<UserProfile> UserProfiles { get; set; }
+        public DbSet<Major> Majors { get; set; }
+        public DbSet<Recommendation> Recommendations { get; set; }
+
+
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -66,6 +66,12 @@ namespace WebAPI
             builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
             builder.Services.AddScoped<IQuestionOptionRepository, QuestionOptionRepository>();
 
+            builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+            builder.Services.AddScoped<IMajorRepository, MajorRepository>();
+            //builder.Services.AddScoped<IUserAnswerRepository, UserAnswerRepository>();
+            builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+
+
 
             builder.Services.Configure<EmailSettings>(
                 builder.Configuration.GetSection("EmailSettings")
@@ -82,6 +88,12 @@ namespace WebAPI
             builder.Services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
             builder.Services.AddScoped<IQuestionService, QuestionService>();
             builder.Services.AddScoped<IQuestionOptionService, QuestionOptionService>();
+
+            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+            builder.Services.AddScoped<IMajorService, MajorService>();
+            //builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
+            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
 
             builder.Services.AddHttpClient();
 

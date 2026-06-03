@@ -17,7 +17,7 @@ namespace DataAccess.Interfaces
 
         IRefreshTokenRepository RefreshTokenRepository { get; }
         IEmailVerificationRepository EmailVerificationRepository { get; }
-        public IUniversityRepository Universities { get; }
+        IUniversityRepository Universities { get; }
 
 
         IPaymentTransactionRepository PaymentTransactionRepository { get; }
@@ -31,6 +31,12 @@ namespace DataAccess.Interfaces
 
         IQuestionOptionRepository QuestionOptionRepository { get; }
 
+        IUserAnswerRepository UserAnswerRepository { get; }
+
+        IRecommendationRepository RecommendationRepository { get; }
+
+        IUserProfileRepository UserProfileRepository { get; }
+        IMajorRepository MajorRepository { get; }
 
         Task<int> SaveAsync();
     }

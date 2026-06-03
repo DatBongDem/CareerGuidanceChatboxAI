@@ -26,7 +26,10 @@ namespace DataAccess.Repositories
 
       
         public IUniversityRepository Universities { get; private set; }
-
+        public IUserAnswerRepository UserAnswerRepository { get; private set; }
+        public IRecommendationRepository RecommendationRepository { get; private set; }
+        public IUserProfileRepository   UserProfileRepository { get; private set; }
+        public IMajorRepository MajorRepository { get; private set; }
         public UnitOfWork(ApplicationDbContext context)
         { }
         public UnitOfWork(
@@ -66,6 +69,11 @@ namespace DataAccess.Repositories
 
          
             Universities = new UniversityRepository(_context);
+
+            UserAnswerRepository = new UserAnswerRepository(_context);
+            RecommendationRepository = new RecommendationRepository(_context);
+            UserProfileRepository = new UserProfileRepository(_context);
+            MajorRepository = new MajorRepository(_context);
 
             RefreshTokenRepository =
                 refreshTokenRepository;
