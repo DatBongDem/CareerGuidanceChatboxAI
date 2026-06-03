@@ -6,37 +6,37 @@ namespace BusinessLogic.Services
 {
     public class UniversityService : IUniversityService
     {
-        private readonly IUniversityRepository _repo;
+        private readonly IUnitOfWork _uow;
 
-        public UniversityService(IUniversityRepository repo)
+        public UniversityService(IUnitOfWork uow)
         {
-            _repo = repo;
+            _uow = uow;
         }
 
-        public async Task<List<University>> GetAllAsync()
+        public async Task<IEnumerable<University>> GetAllAsync()
         {
-            return await _repo.GetAllAsync();
+            return await _uow.Universities.GetAllAsync();
         }
 
         public async Task<University?> GetByIdAsync(Guid id)
         {
-            return await _repo.GetByIdAsync(id);
+            return await _uow.Universities.GetByIdAsync(id);
         }
 
         public async Task<University> CreateAsync(University model)
         {
             model.UniversityId = Guid.NewGuid();
 
-            await _repo.AddAsync(model);
-            await Save();
+            await _uow.Universities.AddAsync(model);
+            await _uow.SaveAsync();
 
             return model;
         }
 
-        public async Task<University?> UpdateAsync(Guid id, University model)
+        public async Task<bool> UpdateAsync(Guid id, University model)
         {
-            var existing = await _repo.GetByIdAsync(id);
-            if (existing == null) return null;
+            var existing = await _uow.Universities.GetByIdAsync(id);
+            if (existing == null) return false;
 
             existing.Name = model.Name;
             existing.ShortName = model.ShortName;
@@ -44,29 +44,18 @@ namespace BusinessLogic.Services
             existing.Ranking = model.Ranking;
             existing.Avatar = model.Avatar;
 
-            _repo.Update(existing);
-            await Save();
-
-            return existing;
-        }
-
-        public async Task<bool> DeleteAsync(Guid id)
-        {
-            var existing = await _repo.GetByIdAsync(id);
-            if (existing == null) return false;
-
-            _repo.Delete(existing);
-            await Save();
+            await _uow.Universities.UpdateAsync(existing);
+            await _uow.SaveAsync();
 
             return true;
         }
 
-        // nếu mày có UnitOfWork thì thay phần này
-        private async Task Save()
+        public async Task<bool> DeleteAsync(Guid id)
         {
-            // quick fix nếu chưa dùng UoW
-            // inject DbContext vào repo thì phải expose SaveChanges
-            // hoặc dùng UnitOfWork đúng chuẩn
+            await _uow.Universities.DeleteAsync(id);
+            await _uow.SaveAsync();
+
+            return true;
         }
     }
 }

@@ -2,7 +2,7 @@
 using DataAccess.Entities;
 using Microsoft.AspNetCore.Mvc;
 
-namespace API.Controllers
+namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -33,29 +33,24 @@ namespace API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(University model)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             var result = await _service.CreateAsync(model);
-
             return CreatedAtAction(nameof(GetById), new { id = result.UniversityId }, result);
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, University model)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] University model)
         {
-            var result = await _service.UpdateAsync(id, model);
-            if (result == null) return NotFound();
+            var success = await _service.UpdateAsync(model.UniversityId, model);
 
-            return Ok(result);
+            if (!success) return NotFound();
+
+            return Ok();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var success = await _service.DeleteAsync(id);
-            if (!success) return NotFound();
-
+            await _service.DeleteAsync(id);
             return NoContent();
         }
     }
