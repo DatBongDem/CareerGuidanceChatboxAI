@@ -79,5 +79,18 @@ namespace WebAPI.Controllers
             }
             return NoContent();
         }
+
+        // PUT: api/Users/5/toggle-active
+        [HttpPut("{id}/toggle-active")]
+        [Authorize(Roles = "ADMIN")]
+        public async Task<IActionResult> ToggleUserActive(Guid id)
+        {
+            var result = await _userService.ToggleUserActiveStatusAsync(id);
+            if (!result)
+            {
+                return NotFound();
+            }
+            return Ok();
+        }
     }
 }

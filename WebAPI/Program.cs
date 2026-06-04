@@ -11,6 +11,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using CloudinaryDotNet;
+using BusinessLogic.Configurations;
+using WebAPI.Hubs;
 
 namespace WebAPI
 {
@@ -33,11 +35,28 @@ namespace WebAPI
             // AUTO MAPPER
             // =========================
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
+            builder.Services.Configure<PayOSSettings>(builder.Configuration.GetSection("PayOS")
+);
 
             // =========================
             // DEPENDENCY INJECTION
             // =========================
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            builder.Services.AddScoped<IPayOSService, PayOSService>();
+
+            builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
+            builder.Services.AddScoped<IUniversityService, UniversityService>();
+
+            builder.Services.AddScoped<IUserService, UserService>();
+
+            builder.Services.AddScoped<IRoleService, RoleService>();
+
+            builder.Services.AddScoped<IPlanService, PlanService>();
+
+            builder.Services.AddScoped<IEmailVerificationRepository,
+                EmailVerificationRepository>();
+
+            builder.Services.AddScoped<IAuthService, AuthService>();
 
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
@@ -50,6 +69,13 @@ namespace WebAPI
             builder.Services.AddScoped<IQuestionCategoryRepository, QuestionCategoryRepository>();
             builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
             builder.Services.AddScoped<IQuestionOptionRepository, QuestionOptionRepository>();
+
+            builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+            builder.Services.AddScoped<IMajorRepository, MajorRepository>();
+            //builder.Services.AddScoped<IUserAnswerRepository, UserAnswerRepository>();
+            builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+
+
 
             builder.Services.Configure<EmailSettings>(
                 builder.Configuration.GetSection("EmailSettings")
@@ -66,6 +92,12 @@ namespace WebAPI
             builder.Services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
             builder.Services.AddScoped<IQuestionService, QuestionService>();
             builder.Services.AddScoped<IQuestionOptionService, QuestionOptionService>();
+
+            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+            builder.Services.AddScoped<IMajorService, MajorService>();
+            //builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
+            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
 
             builder.Services.AddHttpClient();
 
@@ -88,6 +120,11 @@ namespace WebAPI
                             .AllowCredentials();
                     });
             });
+
+            // =========================
+            // SIGNALR
+            // =========================
+            builder.Services.AddSignalR();
 
             // =========================
             // CONTROLLERS
@@ -234,6 +271,7 @@ namespace WebAPI
             // ROUTES
             // =========================
             app.MapControllers();
+            app.MapHub<PaymentHub>("/payment-hub");
 
             app.MapGet("/", () => "4S_BE API Running");
 

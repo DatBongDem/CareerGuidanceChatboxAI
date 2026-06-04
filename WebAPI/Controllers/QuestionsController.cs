@@ -79,5 +79,12 @@ namespace WebAPI.Controllers
             }
             return NoContent();
         }
+
+        [HttpGet("category/{categoryId}")]
+        public async Task<IActionResult> GetByCategoryId(Guid categoryId)
+        {
+            var result = await _service.GetByCategoryIdAsync(categoryId);
+            return Ok(result);
+        }
     }
 }
