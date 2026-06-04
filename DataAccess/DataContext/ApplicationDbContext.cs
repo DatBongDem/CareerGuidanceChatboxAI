@@ -23,6 +23,9 @@ namespace DataAccess.DataContext
 
         public DbSet<EmailVerification> EmailVerifications { get; set; }
 
+
+        public DbSet<University> Universities { get; set; }
+
         public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
         public DbSet<ChatHistory> ChatHistories { get; set; }
@@ -32,6 +35,13 @@ namespace DataAccess.DataContext
         public DbSet<Question> Questions { get; set; }
 
         public DbSet<QuestionOption> QuestionOptions { get; set; }
+
+        public DbSet<UserProfile> UserProfiles { get; set; }
+        public DbSet<Major> Majors { get; set; }
+        public DbSet<Recommendation> Recommendations { get; set; }
+
+
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

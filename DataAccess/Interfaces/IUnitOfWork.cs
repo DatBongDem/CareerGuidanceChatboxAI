@@ -1,4 +1,5 @@
 using DataAccess.Interfaces;
+using DataAccess.Repositories;
 using System;
 using System.Threading.Tasks;
 
@@ -14,11 +15,13 @@ namespace DataAccess.Interfaces
 
         IPlanHistoryRepository PlanHistoryRepository { get; }
 
+        IRefreshTokenRepository RefreshTokenRepository { get; }
+        IEmailVerificationRepository EmailVerificationRepository { get; }
+        IUniversityRepository Universities { get; }
+
+
         IPaymentTransactionRepository PaymentTransactionRepository { get; }
 
-        IRefreshTokenRepository  RefreshTokenRepository { get; }
-
-        IEmailVerificationRepository  EmailVerificationRepository { get; }
 
         IChatHistoryRepository ChatHistoryRepository { get; }
 
@@ -27,6 +30,13 @@ namespace DataAccess.Interfaces
         IQuestionRepository QuestionRepository { get; }
 
         IQuestionOptionRepository QuestionOptionRepository { get; }
+
+        IUserAnswerRepository UserAnswerRepository { get; }
+
+        IRecommendationRepository RecommendationRepository { get; }
+
+        IUserProfileRepository UserProfileRepository { get; }
+        IMajorRepository MajorRepository { get; }
 
         Task<int> SaveAsync();
     }

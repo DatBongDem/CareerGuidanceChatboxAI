@@ -39,6 +39,21 @@ namespace WebAPI
             // =========================
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+
+            builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
+            builder.Services.AddScoped<IUniversityService, UniversityService>();
+
+            builder.Services.AddScoped<IUserService, UserService>();
+
+            builder.Services.AddScoped<IRoleService, RoleService>();
+
+            builder.Services.AddScoped<IPlanService, PlanService>();
+
+            builder.Services.AddScoped<IEmailVerificationRepository,
+                EmailVerificationRepository>();
+
+            builder.Services.AddScoped<IAuthService, AuthService>();
+
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
             builder.Services.AddScoped<IPlanRepository, PlanRepository>();
@@ -50,6 +65,13 @@ namespace WebAPI
             builder.Services.AddScoped<IQuestionCategoryRepository, QuestionCategoryRepository>();
             builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
             builder.Services.AddScoped<IQuestionOptionRepository, QuestionOptionRepository>();
+
+            builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+            builder.Services.AddScoped<IMajorRepository, MajorRepository>();
+            //builder.Services.AddScoped<IUserAnswerRepository, UserAnswerRepository>();
+            builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+
+
 
             builder.Services.Configure<EmailSettings>(
                 builder.Configuration.GetSection("EmailSettings")
@@ -66,6 +88,12 @@ namespace WebAPI
             builder.Services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
             builder.Services.AddScoped<IQuestionService, QuestionService>();
             builder.Services.AddScoped<IQuestionOptionService, QuestionOptionService>();
+
+            builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+            builder.Services.AddScoped<IMajorService, MajorService>();
+            //builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
+            builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
 
             builder.Services.AddHttpClient();
 
