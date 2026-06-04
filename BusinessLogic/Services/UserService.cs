@@ -102,5 +102,21 @@ namespace BusinessLogic.Services
 
             return user;
         }
+
+        public async Task<bool> ToggleUserActiveStatusAsync(Guid id)
+        {
+            var user = await _unitOfWork.UserRepository.GetByIdAsync(id);
+            if (user == null)
+            {
+                return false;
+            }
+
+            user.IsActive = !user.IsActive;
+            user.UpdateAt = DateTime.UtcNow;
+
+            await _unitOfWork.UserRepository.UpdateAsync(user);
+            await _unitOfWork.SaveAsync();
+            return true;
+        }
     }
 }

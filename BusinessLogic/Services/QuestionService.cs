@@ -82,5 +82,13 @@ namespace BusinessLogic.Services
 
             return true;
         }
+
+        public async Task<IEnumerable<QuestionDto>> GetByCategoryIdAsync(Guid categoryId)
+        {
+            var questions = await _unitOfWork.QuestionRepository.GetAsync(
+                filter: q => q.CategoryId == categoryId
+            );
+            return _mapper.Map<IEnumerable<QuestionDto>>(questions);
+        }
     }
 }
