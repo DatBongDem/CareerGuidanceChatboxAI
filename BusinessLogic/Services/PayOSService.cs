@@ -26,7 +26,7 @@ namespace BusinessLogic.Services
             );
         }
 
-        public async Task<string> CreatePaymentLinkAsync(
+        public async Task<CreatePaymentLinkResponse> CreatePaymentLinkAsync(
             string orderCode,
             string planName,
             decimal amount)
@@ -53,7 +53,7 @@ namespace BusinessLogic.Services
             };
 
             var result = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
-            return result.CheckoutUrl;
+            return result;
         }
 
         public async Task<WebhookData> VerifyWebhookDataAsync(Webhook webhookBody)

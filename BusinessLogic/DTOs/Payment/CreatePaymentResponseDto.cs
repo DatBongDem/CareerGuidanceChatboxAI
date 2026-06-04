@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +8,15 @@ namespace BusinessLogic.DTOs.Payment
 {
     public class CreatePaymentResponseDto
     {
-        public string QrUrl { get; set; } = string.Empty;
+        public string QrCode { get; set; } = string.Empty;
+
+        public string Bin { get; set; } = string.Empty;
+
+        public string AccountNumber { get; set; } = string.Empty;
+
+        public string AccountName { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
 
         public string TransactionCode { get; set; } = string.Empty;
 
