@@ -12,5 +12,6 @@ namespace BusinessLogic.Interfaces
         Task<QuestionOptionDto> CreateAsync(CreateQuestionOptionDto createDto);
         Task<bool> UpdateAsync(Guid id, UpdateQuestionOptionDto updateDto);
         Task<bool> DeleteAsync(Guid id);
+        Task<IEnumerable<QuestionOptionDto>> GetByQuestionIdAsync(Guid questionId);
     }
 }

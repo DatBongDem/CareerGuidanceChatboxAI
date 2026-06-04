@@ -79,5 +79,12 @@ namespace WebAPI.Controllers
             }
             return NoContent();
         }
+
+        [HttpGet("question/{questionId}")]
+        public async Task<IActionResult> GetByQuestionId(Guid questionId)
+        {
+            var result = await _service.GetByQuestionIdAsync(questionId);
+            return Ok(result);
+        }
     }
 }

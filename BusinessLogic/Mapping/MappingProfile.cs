@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using AutoMapper;
 using BusinessLogic.DTOs;
 using BusinessLogic.DTOs.ChatAI.Question;
@@ -26,6 +28,30 @@ namespace BusinessLogic
                         src => src.Role != null
                             ? src.Role.Name
                             : string.Empty
+                    )
+                )
+                .ForMember(
+                    dest => dest.PlanName,
+                    opt => opt.MapFrom(
+                        src => src.PlanHistories != null && src.PlanHistories.Any()
+                            ? src.PlanHistories
+                                .Where(ph => ph.IsActive && ph.ExpiryDate > DateTime.UtcNow)
+                                .OrderByDescending(ph => ph.StartDate)
+                                .Select(ph => ph.Plan != null ? ph.Plan.Name : "FREE")
+                                .FirstOrDefault() ?? "FREE"
+                            : "FREE"
+                    )
+                )
+                .ForMember(
+                    dest => dest.DatePlanRegistration,
+                    opt => opt.MapFrom(
+                        src => src.PlanHistories != null && src.PlanHistories.Any()
+                            ? src.PlanHistories
+                                .Where(ph => ph.IsActive && ph.ExpiryDate > DateTime.UtcNow)
+                                .OrderByDescending(ph => ph.StartDate)
+                                .Select(ph => ph.StartDate)
+                                .FirstOrDefault()
+                            : default(DateTime)
                     )
                 );
 

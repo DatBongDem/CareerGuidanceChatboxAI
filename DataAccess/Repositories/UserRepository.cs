@@ -11,9 +11,22 @@ namespace DataAccess.Repositories
         {
         }
 
+        public override async Task<IEnumerable<User>> GetAllAsync()
+        {
+            return await _dbSet
+                .Include(u => u.Role)
+                .Include(u => u.PlanHistories)
+                    .ThenInclude(ph => ph.Plan)
+                .ToListAsync();
+        }
+
         public override async Task<User?> GetByIdAsync(Guid id)
         {
-            return await _dbSet.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == id);
+            return await _dbSet
+                .Include(u => u.Role)
+                .Include(u => u.PlanHistories)
+                    .ThenInclude(ph => ph.Plan)
+                .FirstOrDefaultAsync(u => u.UserId == id);
         }
 
         public async Task<User?> GetByEmailAsync(string email)

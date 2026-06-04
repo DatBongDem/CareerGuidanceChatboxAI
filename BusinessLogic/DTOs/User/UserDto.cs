@@ -17,12 +17,9 @@ namespace BusinessLogic.DTOs.User
         public Guid? UpdatedBy { get; set; }
         public string AvatarUrl { get; set; } = string.Empty;
         public bool IsActive { get; set; }
-        public Guid RoleId { get; set; }
         public string RoleName { get; set; } = string.Empty;
-        public Guid? PlanId { get; set; }
         public string? PlanName { get; set; }
         public DateTime DatePlanRegistration { get; set; }
-        public string? Token { get; set; } 
         public DateTime? LastLoginTime { get; set; }
     }
 }
