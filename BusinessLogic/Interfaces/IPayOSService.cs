@@ -1,11 +1,12 @@
 using PayOS.Models.Webhooks;
+using PayOS.Models.V2.PaymentRequests;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Interfaces
 {
     public interface IPayOSService
     {
-        Task<string> CreatePaymentLinkAsync(
+        Task<CreatePaymentLinkResponse> CreatePaymentLinkAsync(
             string orderCode,
             string planName,
             decimal amount);

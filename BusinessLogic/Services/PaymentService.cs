@@ -1,4 +1,4 @@
-﻿using BusinessLogic.DTOs.Payment;
+using BusinessLogic.DTOs.Payment;
 using BusinessLogic.Interfaces;
 using DataAccess.Entities;
 using DataAccess.Interfaces;
@@ -21,8 +21,7 @@ namespace BusinessLogic.Services
             _payOSService = payOSService;
         }
 
-        public async Task<CreatePaymentResponseDto>
-    CreatePaymentAsync(Guid userId, Guid planId)
+        public async Task<CreatePaymentResponseDto> CreatePaymentAsync(Guid userId, Guid planId)
         {
             var existingActivePlan =
                 await _unitOfWork
@@ -82,7 +81,7 @@ namespace BusinessLogic.Services
             await _unitOfWork
                 .SaveAsync();
 
-            var checkoutUrl =
+            var paymentLinkResult =
                 await _payOSService
                     .CreatePaymentLinkAsync(
                         transactionCode,
@@ -91,7 +90,11 @@ namespace BusinessLogic.Services
 
             return new CreatePaymentResponseDto
             {
-                QrUrl = checkoutUrl,
+                QrCode = paymentLinkResult.QrCode,
+                Bin = paymentLinkResult.Bin,
+                AccountNumber = paymentLinkResult.AccountNumber,
+                AccountName = paymentLinkResult.AccountName,
+                Description = paymentLinkResult.Description,
                 TransactionCode = transactionCode,
                 Amount = plan.Price,
                 PlanName = plan.Name
