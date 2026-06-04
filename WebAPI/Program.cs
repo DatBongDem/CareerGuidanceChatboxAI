@@ -11,6 +11,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using CloudinaryDotNet;
+using BusinessLogic.Configurations;
+using WebAPI.Hubs;
 
 namespace WebAPI
 {
@@ -33,12 +35,14 @@ namespace WebAPI
             // AUTO MAPPER
             // =========================
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
+            builder.Services.Configure<PayOSSettings>(builder.Configuration.GetSection("PayOS")
+);
 
             // =========================
             // DEPENDENCY INJECTION
             // =========================
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-
+            builder.Services.AddScoped<IPayOSService, PayOSService>();
 
             builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
             builder.Services.AddScoped<IUniversityService, UniversityService>();
@@ -116,6 +120,11 @@ namespace WebAPI
                             .AllowCredentials();
                     });
             });
+
+            // =========================
+            // SIGNALR
+            // =========================
+            builder.Services.AddSignalR();
 
             // =========================
             // CONTROLLERS
@@ -262,6 +271,7 @@ namespace WebAPI
             // ROUTES
             // =========================
             app.MapControllers();
+            app.MapHub<PaymentHub>("/payment-hub");
 
             app.MapGet("/", () => "4S_BE API Running");
 

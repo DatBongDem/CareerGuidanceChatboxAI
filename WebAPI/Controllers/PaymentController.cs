@@ -1,31 +1,35 @@
-﻿using BusinessLogic.DTOs.Payment;
+using BusinessLogic.DTOs.Payment;
 using BusinessLogic.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using PayOS.Models.Webhooks;
 using System.Security.Claims;
+using WebAPI.Hubs;
 
 namespace WebAPI.Controllers
 {
-    
-        [ApiController]
-        [Route("api/payment")]
-        public class PaymentController : ControllerBase
+    [ApiController]
+    [Route("api/payment")]
+    public class PaymentController : ControllerBase
+    {
+        private readonly IPaymentService _paymentService;
+        private readonly IPayOSService _payOSService;
+        private readonly IHubContext<PaymentHub> _hubContext;
+
+        public PaymentController(
+            IPaymentService paymentService,
+            IPayOSService payOSService,
+            IHubContext<PaymentHub> hubContext)
         {
-            private readonly IPaymentService
-                _paymentService;
+            _paymentService = paymentService;
+            _payOSService = payOSService;
+            _hubContext = hubContext;
+        }
 
-            public PaymentController(
-                IPaymentService paymentService)
-            {
-                _paymentService = paymentService;
-            }
-
-            [HttpPost("create")]
-            public async Task<IActionResult>
-                CreatePayment(
-                    CreatePaymentRequestDto request)
-            {
-            var userIdClaim = User
-            .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        [HttpPost("create")]
+        public async Task<IActionResult> CreatePayment(CreatePaymentRequestDto request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userIdClaim))
             {
@@ -34,47 +38,72 @@ namespace WebAPI.Controllers
 
             var userId = Guid.Parse(userIdClaim);
 
-            var result =
-                    await _paymentService
-                        .CreatePaymentAsync(
-                            userId,
-                            request.PlanId);
+            var result = await _paymentService.CreatePaymentAsync(userId, request.PlanId);
 
-                return Ok(result);
-            }
+            return Ok(result);
+        }
 
-            [HttpPost("confirm")]
-            public async Task<IActionResult>
-                ConfirmPayment(string code)
+        [HttpPost("webhook")]
+        public async Task<IActionResult> ReceiveWebhook([FromBody] Webhook body)
+        {
+            try
             {
-                await _paymentService
-                    .ConfirmPaymentAsync(code);
+                var verifiedData = await _payOSService.VerifyWebhookDataAsync(body);
+                string transactionCode = verifiedData.OrderCode.ToString();
 
-                return Ok(new
+                // Handle PayOS test webhook (orderCode is usually 123)
+                if (transactionCode == "123")
                 {
-                    message = "Payment success"
-                });
-            }
+                    return Ok(new { message = "Test webhook processed successfully" });
+                }
 
-            [HttpPost("cancel")]
-            public async Task<IActionResult>
-                CancelPayment(string code)
-            {
-                try
+                if (verifiedData.Code == "00")
                 {
-                    await _paymentService
-                        .CancelPaymentAsync(code);
-
-                    return Ok(new
+                    try
                     {
-                        message = "Payment cancelled successfully"
-                    });
+                        await _paymentService.ConfirmPaymentAsync(transactionCode);
+                    }
+                    catch (ApplicationException ex) when (ex.Message == "Payment already confirmed")
+                    {
+                        // Already confirmed, proceed to notify client
+                    }
+                    catch (ApplicationException ex) when (ex.Message == "Transaction not found")
+                    {
+                        return Ok(new { message = $"Transaction {transactionCode} not found, acknowledged." });
+                    }
+
+                    // Notify realtime clients
+                    await _hubContext.Clients.Group(transactionCode)
+                        .SendAsync("PaymentConfirmed", new { status = "Success" });
+
+                    return Ok(new { message = "Webhook processed successfully" });
                 }
-                catch (ApplicationException ex)
+                else
                 {
-                    return BadRequest(new { message = ex.Message });
+                    try
+                    {
+                        await _paymentService.CancelPaymentAsync(transactionCode);
+                    }
+                    catch (ApplicationException ex) when (ex.Message == "Payment has already been cancelled." || ex.Message == "Cannot cancel a successful payment.")
+                    {
+                        // Already cancelled or successful, proceed to notify client
+                    }
+                    catch (ApplicationException ex) when (ex.Message == "Transaction not found")
+                    {
+                        return Ok(new { message = $"Transaction {transactionCode} not found, acknowledged." });
+                    }
+
+                    // Notify realtime clients
+                    await _hubContext.Clients.Group(transactionCode)
+                        .SendAsync("PaymentFailed", new { status = "Failed", message = verifiedData.Description });
+
+                    return Ok(new { message = $"Webhook processed (Payment failed/cancelled: {verifiedData.Description})" });
                 }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
-    
+    }
 }
