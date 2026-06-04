@@ -13,23 +13,32 @@ namespace BusinessLogic.Services
     public class PaymentService:  IPaymentService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPayOSService _payOSService;
 
-        public PaymentService(IUnitOfWork unitOfWork)
+        public PaymentService(IUnitOfWork unitOfWork, IPayOSService payOSService)
         {
             _unitOfWork = unitOfWork;
+            _payOSService = payOSService;
         }
 
-        public async Task<CreatePaymentResponseDto>  CreatePaymentAsync(Guid userId, Guid planId)
+        public async Task<CreatePaymentResponseDto>
+    CreatePaymentAsync(Guid userId, Guid planId)
         {
-            var existingActivePlan = await _unitOfWork.PlanHistoryRepository.GetLatestActiveByUserIdAsync(userId);
+            var existingActivePlan =
+                await _unitOfWork
+                    .PlanHistoryRepository
+                    .GetLatestActiveByUserIdAsync(userId);
+
             if (existingActivePlan != null)
             {
-                throw new ApplicationException("You already have an active plan.");
+                throw new ApplicationException(
+                    "You already have an active plan.");
             }
 
-            var user = await _unitOfWork
-                .UserRepository
-                .GetByIdAsync(userId);
+            var user =
+                await _unitOfWork
+                    .UserRepository
+                    .GetByIdAsync(userId);
 
             if (user == null)
             {
@@ -37,9 +46,10 @@ namespace BusinessLogic.Services
                     "User not found");
             }
 
-            var plan = await _unitOfWork
-                .PlanRepository
-                .GetByIdAsync(planId);
+            var plan =
+                await _unitOfWork
+                    .PlanRepository
+                    .GetByIdAsync(planId);
 
             if (plan == null)
             {
@@ -48,7 +58,9 @@ namespace BusinessLogic.Services
             }
 
             var transactionCode =
-                Guid.NewGuid().ToString();
+                DateTimeOffset.UtcNow
+                    .ToUnixTimeMilliseconds()
+                    .ToString();
 
             var transaction =
                 new PaymentTransaction
@@ -58,7 +70,7 @@ namespace BusinessLogic.Services
                     PlanId = planId,
                     Amount = plan.Price,
                     Status = "Pending",
-                    PaymentMethod = "QR",
+                    PaymentMethod = "PayOS",
                     TransactionCode = transactionCode,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -70,13 +82,16 @@ namespace BusinessLogic.Services
             await _unitOfWork
                 .SaveAsync();
 
-            string qrUrl =
-                $"https://localhost:3000/payment-confirm" +
-                $"?code={transactionCode}";
+            var checkoutUrl =
+                await _payOSService
+                    .CreatePaymentLinkAsync(
+                        transactionCode,
+                        plan.Name,
+                        plan.Price);
 
             return new CreatePaymentResponseDto
             {
-                QrUrl = qrUrl,
+                QrUrl = checkoutUrl,
                 TransactionCode = transactionCode,
                 Amount = plan.Price,
                 PlanName = plan.Name
