@@ -68,7 +68,6 @@ namespace BusinessLogic.Services
                     UserId = userId,
                     PlanId = planId,
                     Amount = plan.Price,
-                    Status = "Pending",
                     PaymentMethod = "PayOS",
                     TransactionCode = transactionCode,
                     CreatedAt = DateTime.UtcNow
@@ -116,13 +115,14 @@ namespace BusinessLogic.Services
                     "Transaction not found");
             }
 
-            if (transaction.Status == "Success")
+            var existingHistory = await _unitOfWork.PlanHistoryRepository.GetAsync(
+                filter: ph => ph.TransactionId == transaction.TransactionId);
+
+            if (existingHistory.Any())
             {
                 throw new ApplicationException(
                     "Payment already confirmed");
             }
-
-            transaction.Status = "Success";
 
             transaction.PaidAt = DateTime.UtcNow;
 
@@ -162,21 +162,67 @@ namespace BusinessLogic.Services
                     "Transaction not found");
             }
 
-            if (transaction.Status == "Success")
+            var existingHistory = await _unitOfWork.PlanHistoryRepository.GetAsync(
+                filter: ph => ph.TransactionId == transaction.TransactionId);
+
+            if (existingHistory.Any())
             {
                 throw new ApplicationException(
                     "Cannot cancel a successful payment.");
             }
 
-            if (transaction.Status == "Cancelled")
-            {
-                throw new ApplicationException(
-                    "Payment has already been cancelled.");
-            }
-
-            transaction.Status = "Cancelled";
-
             await _unitOfWork.SaveAsync();
+        }
+
+        public async Task<IEnumerable<PaymentTransactionDto>> GetAllTransactionsAsync()
+        {
+            var transactions = await _unitOfWork.PaymentTransactionRepository.GetAsync(includeProperties: "Plan");
+            var planHistories = await _unitOfWork.PlanHistoryRepository.GetAllAsync();
+            var successTransactionIds = planHistories.Select(ph => ph.TransactionId).ToHashSet();
+
+            return transactions.Select(t => new PaymentTransactionDto
+            {
+                TransactionId = t.TransactionId,
+                UserId = t.UserId,
+                PlanId = t.PlanId,
+                PlanName = t.Plan?.Name ?? string.Empty,
+                Amount = t.Amount,
+                PaymentMethod = t.PaymentMethod,
+                TransactionCode = t.TransactionCode,
+                CreatedAt = t.CreatedAt,
+                PaidAt = t.PaidAt,
+                Status = successTransactionIds.Contains(t.TransactionId)
+                    ? "Success"
+                    : (DateTime.UtcNow < t.CreatedAt.AddMinutes(5) ? "Pending" : "Expired")
+            });
+        }
+
+        public async Task<IEnumerable<PaymentTransactionDto>> GetTransactionsByUserIdAsync(Guid userId)
+        {
+            var transactions = await _unitOfWork.PaymentTransactionRepository.GetAsync(
+                filter: t => t.UserId == userId,
+                includeProperties: "Plan");
+
+            var planHistories = await _unitOfWork.PlanHistoryRepository.GetAsync(
+                filter: ph => ph.UserId == userId);
+
+            var successTransactionIds = planHistories.Select(ph => ph.TransactionId).ToHashSet();
+
+            return transactions.Select(t => new PaymentTransactionDto
+            {
+                TransactionId = t.TransactionId,
+                UserId = t.UserId,
+                PlanId = t.PlanId,
+                PlanName = t.Plan?.Name ?? string.Empty,
+                Amount = t.Amount,
+                PaymentMethod = t.PaymentMethod,
+                TransactionCode = t.TransactionCode,
+                CreatedAt = t.CreatedAt,
+                PaidAt = t.PaidAt,
+                Status = successTransactionIds.Contains(t.TransactionId)
+                    ? "Success"
+                    : (DateTime.UtcNow < t.CreatedAt.AddMinutes(5) ? "Pending" : "Expired")
+            });
         }
     }
 }

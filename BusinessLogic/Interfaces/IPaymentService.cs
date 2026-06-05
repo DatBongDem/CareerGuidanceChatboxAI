@@ -1,4 +1,4 @@
-﻿using BusinessLogic.DTOs.Payment;
+using BusinessLogic.DTOs.Payment;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,5 +14,9 @@ namespace BusinessLogic.Interfaces
         Task ConfirmPaymentAsync(string transactionCode);
 
         Task CancelPaymentAsync(string transactionCode);
+
+        Task<IEnumerable<PaymentTransactionDto>> GetAllTransactionsAsync();
+
+        Task<IEnumerable<PaymentTransactionDto>> GetTransactionsByUserIdAsync(Guid userId);
     }
 }
