@@ -39,6 +39,7 @@ namespace DataAccess.DataContext
         public DbSet<UserProfile> UserProfiles { get; set; }
         public DbSet<Major> Majors { get; set; }
         public DbSet<Recommendation> Recommendations { get; set; }
+        public DbSet<UserAnswer> UserAnswers { get; set; }
 
 
 

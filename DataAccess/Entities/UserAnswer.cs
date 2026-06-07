@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace DataAccess.Entities
 {
@@ -7,10 +7,12 @@ namespace DataAccess.Entities
         [Key]
         public Guid UserAnswerId { get; set; }
 
-        public Guid ProfileId { get; set; }
+        public Guid UserId { get; set; }
 
         public Guid QuestionId { get; set; }
 
-        public Guid AnswerId { get; set; }
+        public string Answer { get; set; } = string.Empty;
+
+        public DateTime AnsweredAt { get; set; }
     }
 }
