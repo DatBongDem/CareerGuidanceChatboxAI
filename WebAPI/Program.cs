@@ -72,7 +72,7 @@ namespace WebAPI
 
             builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
             builder.Services.AddScoped<IMajorRepository, MajorRepository>();
-            //builder.Services.AddScoped<IUserAnswerRepository, UserAnswerRepository>();
+            builder.Services.AddScoped<IUserAnswerRepository, UserAnswerRepository>();
             builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
 
 
@@ -95,7 +95,7 @@ namespace WebAPI
 
             builder.Services.AddScoped<IUserProfileService, UserProfileService>();
             builder.Services.AddScoped<IMajorService, MajorService>();
-            //builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
+            builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
             builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 
 
