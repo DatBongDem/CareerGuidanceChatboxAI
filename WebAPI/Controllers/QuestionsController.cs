@@ -18,7 +18,7 @@ namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize]
     public class QuestionsController : ControllerBase
     {
         private readonly IQuestionService _service;
@@ -49,6 +49,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> Create(CreateQuestionDto createDto)
         {
             try
@@ -63,6 +64,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> Update(Guid id, UpdateQuestionDto updateDto)
         {
             try
@@ -81,6 +83,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _service.DeleteAsync(id);
@@ -129,6 +132,7 @@ G. Khác (vui lòng nhập)
         }
 
         [HttpPost("import")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> ImportQuestions(IFormFile file)
         {
             if (file == null || file.Length == 0)
