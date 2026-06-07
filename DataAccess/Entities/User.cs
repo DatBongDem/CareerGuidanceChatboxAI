@@ -14,7 +14,7 @@ namespace DataAccess.Entities
 
         public string Address { get; set; } = string.Empty;
 
-        public string Gender  { get; set; } = string.Empty;
+        public string Gender { get; set; } = string.Empty;
 
         public string PhoneNumber { get; set; } = string.Empty;
 
