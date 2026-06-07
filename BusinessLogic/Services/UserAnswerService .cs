@@ -1,4 +1,4 @@
-﻿using BusinessLogic.Interfaces;
+using BusinessLogic.Interfaces;
 using DataAccess.Entities;
 using DataAccess.Interfaces;
 
@@ -25,7 +25,21 @@ namespace BusinessLogic.Services
 
         public async Task<UserAnswer> CreateAsync(UserAnswer model)
         {
+            var question = await _uow.QuestionRepository.GetByIdAsync(model.QuestionId);
+            if (question == null)
+            {
+                throw new Exception("Không tìm thấy câu hỏi");
+            }
+
+            // Check if this user has already answered this question
+            var existing = await _uow.UserAnswerRepository.GetAsync(a => a.UserId == model.UserId && a.QuestionId == model.QuestionId);
+            if (existing.Any())
+            {
+                throw new Exception("Câu hỏi này bạn đã trả lời rồi");
+            }
+
             model.UserAnswerId = Guid.NewGuid();
+            model.AnsweredAt = DateTime.UtcNow;
 
             await _uow.UserAnswerRepository.AddAsync(model);
             await _uow.SaveAsync();
@@ -39,6 +53,26 @@ namespace BusinessLogic.Services
             if (existing == null) return false;
 
             await _uow.UserAnswerRepository.DeleteAsync(id);
+            await _uow.SaveAsync();
+
+            return true;
+        }
+
+        public async Task<IEnumerable<UserAnswer>> GetByUserIdAsync(Guid userId)
+        {
+            return await _uow.UserAnswerRepository.GetAsync(a => a.UserId == userId);
+        }
+
+        public async Task<bool> DeleteByUserIdAsync(Guid userId)
+        {
+            var answers = await _uow.UserAnswerRepository.GetAsync(a => a.UserId == userId);
+            var answersList = answers.ToList();
+            if (!answersList.Any()) return false;
+
+            foreach (var answer in answersList)
+            {
+                await _uow.UserAnswerRepository.DeleteAsync(answer.UserAnswerId);
+            }
             await _uow.SaveAsync();
 
             return true;
