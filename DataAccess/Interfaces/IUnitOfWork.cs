@@ -38,6 +38,10 @@ namespace DataAccess.Interfaces
         IUserProfileRepository UserProfileRepository { get; }
         IMajorRepository MajorRepository { get; }
 
+        ISkillRepository SkillRepository { get; }
+        IMajorSkillRepository MajorSkillRepository { get; }
+
+
         Task<int> SaveAsync();
     }
 }

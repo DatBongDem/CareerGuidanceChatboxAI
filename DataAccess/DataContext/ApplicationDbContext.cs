@@ -41,6 +41,10 @@ namespace DataAccess.DataContext
         public DbSet<Recommendation> Recommendations { get; set; }
         public DbSet<UserAnswer> UserAnswers { get; set; }
 
+        public DbSet<Skill> Skills { get; set; }
+        public DbSet<MajorSkill> MajorSkills { get; set; }
+
+
 
 
 

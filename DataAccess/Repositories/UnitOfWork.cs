@@ -30,6 +30,8 @@ namespace DataAccess.Repositories
         public IRecommendationRepository RecommendationRepository { get; private set; }
         public IUserProfileRepository   UserProfileRepository { get; private set; }
         public IMajorRepository MajorRepository { get; private set; }
+        public ISkillRepository SkillRepository { get; private set; }
+        public IMajorSkillRepository MajorSkillRepository { get; private set; }
         public UnitOfWork(ApplicationDbContext context)
         { }
         public UnitOfWork(
@@ -74,7 +76,8 @@ namespace DataAccess.Repositories
             RecommendationRepository = new RecommendationRepository(_context);
             UserProfileRepository = new UserProfileRepository(_context);
             MajorRepository = new MajorRepository(_context);
-
+            SkillRepository = new SkillRepository(_context);
+            MajorSkillRepository = new MajorSkillRepository(_context);
             RefreshTokenRepository =
                 refreshTokenRepository;
 
