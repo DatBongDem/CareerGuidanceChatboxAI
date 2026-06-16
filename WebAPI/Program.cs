@@ -69,6 +69,8 @@ namespace WebAPI
             builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
             builder.Services.AddScoped<ISkillRepository, SkillRepository>();
             builder.Services.AddScoped<IMajorSkillRepository, MajorSkillRepository>();
+            builder.Services.AddScoped<IUniversityMajorRepository, UniversityMajorRepository>();
+            builder.Services.AddScoped<IUniversityMajorMethodRepository, UniversityMajorMethodRepository>();
 
 
 
@@ -102,6 +104,8 @@ namespace WebAPI
             builder.Services.AddScoped<IRecommendationService, RecommendationService>();
             builder.Services.AddScoped<ISkillService, SkillService>();
             builder.Services.AddScoped<IMajorSkillService, MajorSkillService>();
+            builder.Services.AddScoped<IUniversityMajorService, UniversityMajorService>();
+            builder.Services.AddScoped<IUniversityMajorMethodService, UniversityMajorMethodService>();
 
 
             builder.Services.AddHttpClient();

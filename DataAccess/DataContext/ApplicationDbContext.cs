@@ -44,6 +44,10 @@ namespace DataAccess.DataContext
         public DbSet<Skill> Skills { get; set; }
         public DbSet<MajorSkill> MajorSkills { get; set; }
 
+        public DbSet<UniversityMajor> UniversityMajors { get; set; }
+
+        public DbSet<AdmissionMethod> AdmissionMethods { get; set; }
+        public DbSet<UniversityMajorMethod> UniversityMajorMethods { get; set; }
 
 
 

@@ -17,7 +17,7 @@ namespace DataAccess.Interfaces
 
         IRefreshTokenRepository RefreshTokenRepository { get; }
         IEmailVerificationRepository EmailVerificationRepository { get; }
-        IUniversityRepository Universities { get; }
+        IUniversityRepository UniversityRepository { get; }
 
 
         IPaymentTransactionRepository PaymentTransactionRepository { get; }
@@ -40,7 +40,8 @@ namespace DataAccess.Interfaces
 
         ISkillRepository SkillRepository { get; }
         IMajorSkillRepository MajorSkillRepository { get; }
-
+        IUniversityMajorRepository UniversityMajorRepository { get; }
+        IUniversityMajorMethodRepository UniversityMajorMethodRepository { get; }
 
         Task<int> SaveAsync();
     }
