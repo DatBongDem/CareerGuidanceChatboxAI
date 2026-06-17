@@ -54,6 +54,21 @@ namespace BusinessLogic.Services
                 throw new Exception("Bạn cần hoàn thành trả lời đầy đủ tất cả câu hỏi của toàn bộ các chuyên mục định hướng để nhận nhận xét tổng quan và đề xuất trường đại học.");
             }
 
+            // 4.5. Check cache: if summary already exists and answers haven't changed since then
+            var cachedSumm = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
+            if (cachedSumm != null && userAnswers.Any())
+            {
+                var maxAnsweredAt = userAnswers.Max(a => a.AnsweredAt);
+                if (cachedSumm.CreatedAt >= maxAnsweredAt)
+                {
+                    var cachedSummary = await GetOverallSummaryAsync(userId);
+                    if (cachedSummary != null)
+                    {
+                        return cachedSummary;
+                    }
+                }
+            }
+
             // 5. Construct prompt details
             var sb = new StringBuilder();
 
@@ -164,34 +179,53 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             bool isSuccess = false;
             string lastError = "";
 
-            foreach (var key in apiKeys)
+            var models = new List<string>
             {
-                try
+                "gemini-3.5-flash",
+                "gemini-3-flash-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash"
+            };
+
+            foreach (var model in models)
+            {
+                foreach (var key in apiKeys)
                 {
-                    var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    response = await _httpClient.PostAsync(
-                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
-                        content);
-                    if (response.IsSuccessStatusCode)
+                    try
                     {
-                        isSuccess = true;
-                        break;
+                        var content = new StringContent(json, Encoding.UTF8, "application/json");
+                        response = await _httpClient.PostAsync(
+                            $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
+                            content);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            isSuccess = true;
+                            break;
+                        }
+                        else
+                        {
+                            var errBody = await response.Content.ReadAsStringAsync();
+                            lastError = $"Model: {model}, Status: {response.StatusCode}, Body: {errBody}";
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        var errBody = await response.Content.ReadAsStringAsync();
-                        lastError = $"Status: {response.StatusCode}, Body: {errBody}";
+                        lastError = $"Model: {model}, Error: {ex.Message}";
                     }
                 }
-                catch (Exception ex)
+
+                if (isSuccess)
                 {
-                    lastError = ex.Message;
+                    break;
                 }
             }
 
             if (!isSuccess)
             {
-                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key hiện có. Lỗi gần nhất: {lastError}");
+                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key và Model hiện có. Lỗi gần nhất: {lastError}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -305,6 +339,21 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
                 throw new Exception("Bạn cần trả lời đầy đủ tất cả câu hỏi trong Chat AI để nhận nhận xét tổng kết và đề xuất trường đại học.");
             }
 
+            // 4.5. Check cache: if summary already exists and answers haven't changed since then
+            var cachedSumm = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
+            if (cachedSumm != null && userAnswers.Any())
+            {
+                var maxAnsweredAt = userAnswers.Max(a => a.AnsweredAt);
+                if (cachedSumm.CreatedAt >= maxAnsweredAt)
+                {
+                    var cachedSummary = await GetOverallSummaryAsync(userId);
+                    if (cachedSummary != null)
+                    {
+                        return cachedSummary;
+                    }
+                }
+            }
+
             // 5. Construct prompt details
             var sb = new StringBuilder();
             sb.AppendLine($"Chuyên mục: {chatCategory.Name}");
@@ -408,34 +457,53 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             bool isSuccess = false;
             string lastError = "";
 
-            foreach (var key in apiKeys)
+            var models = new List<string>
             {
-                try
+                "gemini-3.5-flash",
+                "gemini-3-flash-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash"
+            };
+
+            foreach (var model in models)
+            {
+                foreach (var key in apiKeys)
                 {
-                    var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    response = await _httpClient.PostAsync(
-                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
-                        content);
-                    if (response.IsSuccessStatusCode)
+                    try
                     {
-                        isSuccess = true;
-                        break;
+                        var content = new StringContent(json, Encoding.UTF8, "application/json");
+                        response = await _httpClient.PostAsync(
+                            $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
+                            content);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            isSuccess = true;
+                            break;
+                        }
+                        else
+                        {
+                            var errBody = await response.Content.ReadAsStringAsync();
+                            lastError = $"Model: {model}, Status: {response.StatusCode}, Body: {errBody}";
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        var errBody = await response.Content.ReadAsStringAsync();
-                        lastError = $"Status: {response.StatusCode}, Body: {errBody}";
+                        lastError = $"Model: {model}, Error: {ex.Message}";
                     }
                 }
-                catch (Exception ex)
+
+                if (isSuccess)
                 {
-                    lastError = ex.Message;
+                    break;
                 }
             }
 
             if (!isSuccess)
             {
-                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key hiện có. Lỗi gần nhất: {lastError}");
+                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key và Model hiện có. Lỗi gần nhất: {lastError}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
