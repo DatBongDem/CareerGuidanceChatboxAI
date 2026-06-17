@@ -54,6 +54,21 @@ namespace BusinessLogic.Services
                 throw new Exception("Bạn cần hoàn thành trả lời đầy đủ tất cả câu hỏi của toàn bộ các chuyên mục định hướng để nhận nhận xét tổng quan và đề xuất trường đại học.");
             }
 
+            // 4.5. Check cache: if summary already exists and answers haven't changed since then
+            var cachedSumm = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
+            if (cachedSumm != null && userAnswers.Any())
+            {
+                var maxAnsweredAt = userAnswers.Max(a => a.AnsweredAt);
+                if (cachedSumm.CreatedAt >= maxAnsweredAt)
+                {
+                    var cachedSummary = await GetOverallSummaryAsync(userId);
+                    if (cachedSummary != null)
+                    {
+                        return cachedSummary;
+                    }
+                }
+            }
+
             // 5. Construct prompt details
             var sb = new StringBuilder();
 
@@ -303,6 +318,21 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             if (userAnswers.Count < activeQuestions.Count)
             {
                 throw new Exception("Bạn cần trả lời đầy đủ tất cả câu hỏi trong Chat AI để nhận nhận xét tổng kết và đề xuất trường đại học.");
+            }
+
+            // 4.5. Check cache: if summary already exists and answers haven't changed since then
+            var cachedSumm = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
+            if (cachedSumm != null && userAnswers.Any())
+            {
+                var maxAnsweredAt = userAnswers.Max(a => a.AnsweredAt);
+                if (cachedSumm.CreatedAt >= maxAnsweredAt)
+                {
+                    var cachedSummary = await GetOverallSummaryAsync(userId);
+                    if (cachedSummary != null)
+                    {
+                        return cachedSummary;
+                    }
+                }
             }
 
             // 5. Construct prompt details

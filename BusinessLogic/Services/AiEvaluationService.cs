@@ -54,6 +54,17 @@ namespace BusinessLogic.Services
                 throw new Exception("Bạn cần trả lời đầy đủ tất cả câu hỏi trong chuyên mục này để nhận đánh giá từ AI.");
             }
 
+            // 4.5. Check cache: if evaluation already exists and user answers haven't changed since then
+            var cachedEval = (await _uow.AiEvaluationRepository.GetAsync(e => e.UserId == userId && e.CategoryId == categoryId)).FirstOrDefault();
+            if (cachedEval != null && userAnswers.Any())
+            {
+                var maxAnsweredAt = userAnswers.Max(a => a.AnsweredAt);
+                if (cachedEval.CreatedAt >= maxAnsweredAt)
+                {
+                    return cachedEval.EvaluationText;
+                }
+            }
+
             // 5. Build prompt
             var sb = new StringBuilder();
             sb.AppendLine($"Chuyên mục: {category.Name}");
