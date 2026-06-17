@@ -96,22 +96,39 @@ namespace BusinessLogic.Services
                 a => a.UserId == userId && questionIds.Contains(a.QuestionId)
             )).ToList();
 
-            // 4. Determine current state
-            // Find the first question that hasn't been answered yet
-            var currentQuestion = chatQuestions.FirstOrDefault(q => !userAnswers.Any(a => a.QuestionId == q.Id));
+            // 4. If this is the start of the chat (no answers yet and no message sent)
+            if (userAnswers.Count == 0 && string.IsNullOrWhiteSpace(userMessage))
+            {
+                var currentQuestion = chatQuestions.First();
+                var startPrompt = $@"
+Bạn là một chuyên gia tư vấn hướng nghiệp AI thân thiện.
+Hãy bắt đầu cuộc trò chuyện bằng tiếng Việt một cách tự nhiên, chào mừng người dùng và đưa ra câu hỏi đầu tiên dưới đây để họ trả lời:
+""{currentQuestion.Content}""
+";
+                var startMessage = await CallGeminiSimpleAsync(startPrompt);
+                return new GuidedChatResponse
+                {
+                    Evaluation = "",
+                    Message = startMessage,
+                    IsCompleted = false
+                };
+            }
 
-            // If there is still an unanswered question and user has provided a reply, save it
-            if (currentQuestion != null && !string.IsNullOrWhiteSpace(userMessage))
+            // Otherwise, we process the user's message
+            // Find the current unanswered question
+            var activeQuestion = chatQuestions.FirstOrDefault(q => !userAnswers.Any(a => a.QuestionId == q.Id));
+
+            if (activeQuestion != null && !string.IsNullOrWhiteSpace(userMessage))
             {
                 // Double check if answer already exists to prevent duplicate
-                var existing = await _unitOfWork.UserAnswerRepository.GetAsync(a => a.UserId == userId && a.QuestionId == currentQuestion.Id);
+                var existing = await _unitOfWork.UserAnswerRepository.GetAsync(a => a.UserId == userId && a.QuestionId == activeQuestion.Id);
                 if (!existing.Any())
                 {
                     var newAnswer = new UserAnswer
                     {
                         UserAnswerId = Guid.NewGuid(),
                         UserId = userId,
-                        QuestionId = currentQuestion.Id,
+                        QuestionId = activeQuestion.Id,
                         Answer = userMessage,
                         AnsweredAt = DateTime.UtcNow
                     };
@@ -121,37 +138,55 @@ namespace BusinessLogic.Services
                     // Update local lists
                     userAnswers.Add(newAnswer);
                 }
-
-                // Advance to the next question
-                currentQuestion = chatQuestions.FirstOrDefault(q => !userAnswers.Any(a => a.QuestionId == q.Id));
             }
 
+            // Find the question they just answered
+            var lastAnsweredQuestion = chatQuestions
+                .Where(q => userAnswers.Any(a => a.QuestionId == q.Id))
+                .OrderBy(q => q.DisplayOrder)
+                .LastOrDefault();
+            var lastAnswer = userAnswers.FirstOrDefault(a => a.QuestionId == lastAnsweredQuestion?.Id)?.Answer;
+
+            // Determine the next question
+            var nextQuestion = chatQuestions.FirstOrDefault(q => !userAnswers.Any(a => a.QuestionId == q.Id));
+
             // 5. If all questions are answered, generate summary and return completed response
-            if (currentQuestion == null)
+            if (nextQuestion == null)
             {
                 // Evaluate UserAiSummary
                 var summary = await _userAiSummaryService.EvaluateChatAiOverallAsync(userId);
 
-                // Let AI say a warm ending message presenting the completion
+                // Call Gemini to evaluate the last answer and say a warm ending message
                 var endingPrompt = $@"
 Bạn là một chuyên gia tư vấn tuyển sinh và định hướng nghề nghiệp AI thân thiện.
-Người dùng vừa hoàn thành tất cả các câu hỏi của cuộc khảo sát.
-Hãy tạo một lời thoại kết thúc cuộc trò chuyện thật tự nhiên, thân thiện bằng tiếng Việt, thông báo rằng họ đã hoàn thành cuộc khảo sát hướng nghiệp và chúc mừng họ đã nhận được kết quả nhận xét/đề xuất trường học.
-Tránh đưa ra văn bản thừa thãi, trả lời ngắn gọn và truyền cảm hứng.
+Người dùng vừa hoàn thành câu hỏi cuối cùng của cuộc khảo sát.
+Câu hỏi vừa trả lời: ""{lastAnsweredQuestion?.Content}""
+Câu trả lời của người dùng: ""{lastAnswer}""
+
+Nhiệm vụ của bạn là:
+1. Đưa ra một câu nhận xét, đánh giá ngắn gọn và có ích về câu trả lời cuối cùng này của người dùng (lưu vào trường 'evaluation'). Nhận xét khoảng 30-50 từ, không dùng ký tự định dạng markdown như *, -, #.
+2. Tạo một lời thoại kết thúc cuộc trò chuyện thật tự nhiên, thân thiện bằng tiếng Việt, chúc mừng họ đã hoàn thành toàn bộ cuộc khảo sát hướng nghiệp và thông báo rằng họ có thể xem kết quả tổng hợp chi tiết bên dưới (lưu vào trường 'message').
+
+Trả về kết quả dưới dạng JSON có cấu trúc như sau:
+{{
+  ""evaluation"": ""Đánh giá của bạn về câu trả lời cuối cùng vừa rồi"",
+  ""message"": ""Lời thoại chúc mừng và kết thúc cuộc trò chuyện""
+}}
+Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON này.
 ";
-                var endingMessage = await CallGeminiSimpleAsync(endingPrompt);
+                var parsedResult = await CallGeminiJsonAsync<GeminiGuidedChatResponse>(endingPrompt);
 
                 return new GuidedChatResponse
                 {
-                    Message = endingMessage,
+                    Evaluation = parsedResult?.evaluation ?? string.Empty,
+                    Message = parsedResult?.message ?? string.Empty,
                     IsCompleted = true,
                     Summary = summary
                 };
             }
 
             // 6. Otherwise, ask the next question
-            // We want to ask currentQuestion.
-            // Let's generate a conversational question using Gemini, showing the history (if any) to make it feel natural.
+            // We want to ask nextQuestion, and evaluate the last answer
             var historySb = new StringBuilder();
             var answeredQuestions = chatQuestions.Where(q => userAnswers.Any(a => a.QuestionId == q.Id)).ToList();
             if (answeredQuestions.Any())
@@ -171,30 +206,45 @@ Nhiệm vụ của bạn là dẫn dắt cuộc trò chuyện và đặt câu h�
 
 {historySb.ToString()}
 
-Câu hỏi tiếp theo bạn CẦN hỏi: ""{currentQuestion.Content}""
+Câu hỏi vừa trả lời: ""{lastAnsweredQuestion?.Content}""
+Câu trả lời của người dùng: ""{lastAnswer}""
 
-Hãy tạo một phản hồi tự nhiên bằng tiếng Việt:
-1. Nhận xét ngắn gọn, đồng cảm hoặc phản hồi thân thiện về câu trả lời gần đây nhất của người dùng (nếu có lịch sử).
-2. Chuyển ý tự nhiên và đặt câu hỏi tiếp theo ở trên cho người dùng một cách duyên dáng.
-Không tự ý đổi nội dung cốt lõi của câu hỏi tiếp theo, chỉ trang trí lời thoại xung quanh nó để cuộc hội thoại tự nhiên hơn.
-Trả lời súc tích, ngắn gọn, phù hợp với định dạng trò chuyện chat.
+Câu hỏi tiếp theo bạn CẦN hỏi: ""{nextQuestion.Content}""
+
+Hãy tạo một phản hồi tự nhiên bằng tiếng Việt và trả về dạng JSON:
+1. Đưa ra một câu nhận xét, đánh giá ngắn gọn và có ích về câu trả lời vừa rồi của người dùng đối với câu hỏi ""{lastAnsweredQuestion?.Content}"" (lưu vào trường 'evaluation'). Nhận xét khoảng 30-50 từ, không dùng ký tự markdown như *, -, #.
+2. Chuyển ý tự nhiên và đặt câu hỏi tiếp theo ở trên cho người dùng một cách duyên dáng (lưu vào trường 'message').
+
+Trả về kết quả dưới dạng JSON có cấu trúc như sau:
+{{
+  ""evaluation"": ""Đánh giá của bạn về câu trả lời vừa rồi"",
+  ""message"": ""Lời thoại dẫn dắt và câu hỏi tiếp theo""
+}}
+Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON này.
 ";
 
-            var aiResponse = await CallGeminiSimpleAsync(guidedPrompt);
+            var parsedGuidedResult = await CallGeminiJsonAsync<GeminiGuidedChatResponse>(guidedPrompt);
 
             return new GuidedChatResponse
             {
-                Message = aiResponse,
+                Evaluation = parsedGuidedResult?.evaluation ?? string.Empty,
+                Message = parsedGuidedResult?.message ?? string.Empty,
                 IsCompleted = false
             };
         }
 
         private async Task<string> CallGeminiSimpleAsync(string prompt)
         {
-            var apiKey1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
-            var apiKey2 = _configuration["Gemini:ApiKey2"];
+            var apiKeys = new List<string>();
+            var k1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
+            var k2 = _configuration["Gemini:ApiKey2"];
+            var k3 = _configuration["Gemini:ApiKey3"];
 
-            if (string.IsNullOrEmpty(apiKey1) && string.IsNullOrEmpty(apiKey2))
+            if (!string.IsNullOrEmpty(k1)) apiKeys.Add(k1);
+            if (!string.IsNullOrEmpty(k2)) apiKeys.Add(k2);
+            if (!string.IsNullOrEmpty(k3)) apiKeys.Add(k3);
+
+            if (!apiKeys.Any())
             {
                 throw new Exception("Chưa cấu hình API Key của Gemini.");
             }
@@ -216,41 +266,36 @@ Trả lời súc tích, ngắn gọn, phù hợp với định dạng trò chuy�
             var json = JsonSerializer.Serialize(requestBody);
             HttpResponseMessage response = null!;
             bool isSuccess = false;
+            string lastError = "";
 
-            if (!string.IsNullOrEmpty(apiKey1))
+            foreach (var key in apiKeys)
             {
                 try
                 {
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
                     response = await _httpClient.PostAsync(
-                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey1}",
+                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
                         content);
                     if (response.IsSuccessStatusCode)
                     {
                         isSuccess = true;
+                        break;
+                    }
+                    else
+                    {
+                        var errBody = await response.Content.ReadAsStringAsync();
+                        lastError = $"Status: {response.StatusCode}, Body: {errBody}";
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    if (string.IsNullOrEmpty(apiKey2)) throw;
+                    lastError = ex.Message;
                 }
             }
 
-            if (!isSuccess && !string.IsNullOrEmpty(apiKey2))
+            if (!isSuccess)
             {
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                response = await _httpClient.PostAsync(
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey2}",
-                    content);
-                response.EnsureSuccessStatusCode();
-            }
-            else if (response != null)
-            {
-                response.EnsureSuccessStatusCode();
-            }
-            else
-            {
-                throw new Exception("Không thể thực hiện cuộc gọi đến Gemini API.");
+                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key hiện có. Lỗi gần nhất: {lastError}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -264,6 +309,96 @@ Trả lời súc tích, ngắn gọn, phù hợp với định dạng trò chuy�
                 .GetString();
 
             return answer?.Trim() ?? string.Empty;
+        }
+
+        private async Task<T?> CallGeminiJsonAsync<T>(string prompt)
+        {
+            var apiKeys = new List<string>();
+            var k1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
+            var k2 = _configuration["Gemini:ApiKey2"];
+            var k3 = _configuration["Gemini:ApiKey3"];
+
+            if (!string.IsNullOrEmpty(k1)) apiKeys.Add(k1);
+            if (!string.IsNullOrEmpty(k2)) apiKeys.Add(k2);
+            if (!string.IsNullOrEmpty(k3)) apiKeys.Add(k3);
+
+            if (!apiKeys.Any())
+            {
+                throw new Exception("Chưa cấu hình API Key của Gemini.");
+            }
+
+            var requestBody = new
+            {
+                contents = new[]
+                {
+                    new
+                    {
+                        parts = new[]
+                        {
+                            new { text = prompt }
+                        }
+                    }
+                },
+                generationConfig = new
+                {
+                    responseMimeType = "application/json"
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            HttpResponseMessage response = null!;
+            bool isSuccess = false;
+            string lastError = "";
+
+            foreach (var key in apiKeys)
+            {
+                try
+                {
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    response = await _httpClient.PostAsync(
+                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
+                        content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        isSuccess = true;
+                        break;
+                    }
+                    else
+                    {
+                        var errBody = await response.Content.ReadAsStringAsync();
+                        lastError = $"Status: {response.StatusCode}, Body: {errBody}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex.Message;
+                }
+            }
+
+            if (!isSuccess)
+            {
+                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key hiện có. Lỗi gần nhất: {lastError}");
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(responseJson);
+
+            var rawAnswerJson = document.RootElement
+                .GetProperty("candidates")[0]
+                .GetProperty("content")
+                .GetProperty("parts")[0]
+                .GetProperty("text")
+                .GetString();
+
+            if (string.IsNullOrEmpty(rawAnswerJson)) return default;
+
+            return JsonSerializer.Deserialize<T>(rawAnswerJson);
+        }
+
+        private class GeminiGuidedChatResponse
+        {
+            public string evaluation { get; set; } = string.Empty;
+            public string message { get; set; } = string.Empty;
         }
     }
 }

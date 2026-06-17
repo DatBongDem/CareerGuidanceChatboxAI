@@ -127,10 +127,16 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
 ";
 
             // 7. Request Gemini API in JSON mode
-            var apiKey1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
-            var apiKey2 = _configuration["Gemini:ApiKey2"];
+            var apiKeys = new List<string>();
+            var k1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
+            var k2 = _configuration["Gemini:ApiKey2"];
+            var k3 = _configuration["Gemini:ApiKey3"];
 
-            if (string.IsNullOrEmpty(apiKey1) && string.IsNullOrEmpty(apiKey2))
+            if (!string.IsNullOrEmpty(k1)) apiKeys.Add(k1);
+            if (!string.IsNullOrEmpty(k2)) apiKeys.Add(k2);
+            if (!string.IsNullOrEmpty(k3)) apiKeys.Add(k3);
+
+            if (!apiKeys.Any())
             {
                 throw new Exception("Chưa cấu hình API Key của Gemini.");
             }
@@ -156,41 +162,36 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             var json = JsonSerializer.Serialize(requestBody);
             HttpResponseMessage response = null!;
             bool isSuccess = false;
+            string lastError = "";
 
-            if (!string.IsNullOrEmpty(apiKey1))
+            foreach (var key in apiKeys)
             {
                 try
                 {
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
                     response = await _httpClient.PostAsync(
-                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey1}",
+                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
                         content);
                     if (response.IsSuccessStatusCode)
                     {
                         isSuccess = true;
+                        break;
+                    }
+                    else
+                    {
+                        var errBody = await response.Content.ReadAsStringAsync();
+                        lastError = $"Status: {response.StatusCode}, Body: {errBody}";
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    if (string.IsNullOrEmpty(apiKey2)) throw;
+                    lastError = ex.Message;
                 }
             }
 
-            if (!isSuccess && !string.IsNullOrEmpty(apiKey2))
+            if (!isSuccess)
             {
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                response = await _httpClient.PostAsync(
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey2}",
-                    content);
-                response.EnsureSuccessStatusCode();
-            }
-            else if (response != null)
-            {
-                response.EnsureSuccessStatusCode();
-            }
-            else
-            {
-                throw new Exception("Không thể thực hiện cuộc gọi đến Gemini API.");
+                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key hiện có. Lỗi gần nhất: {lastError}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -370,10 +371,16 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
 ";
 
             // 8. Request Gemini API in JSON mode
-            var apiKey1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
-            var apiKey2 = _configuration["Gemini:ApiKey2"];
+            var apiKeys = new List<string>();
+            var k1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
+            var k2 = _configuration["Gemini:ApiKey2"];
+            var k3 = _configuration["Gemini:ApiKey3"];
 
-            if (string.IsNullOrEmpty(apiKey1) && string.IsNullOrEmpty(apiKey2))
+            if (!string.IsNullOrEmpty(k1)) apiKeys.Add(k1);
+            if (!string.IsNullOrEmpty(k2)) apiKeys.Add(k2);
+            if (!string.IsNullOrEmpty(k3)) apiKeys.Add(k3);
+
+            if (!apiKeys.Any())
             {
                 throw new Exception("Chưa cấu hình API Key của Gemini.");
             }
@@ -399,41 +406,36 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             var json = JsonSerializer.Serialize(requestBody);
             HttpResponseMessage response = null!;
             bool isSuccess = false;
+            string lastError = "";
 
-            if (!string.IsNullOrEmpty(apiKey1))
+            foreach (var key in apiKeys)
             {
                 try
                 {
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
                     response = await _httpClient.PostAsync(
-                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey1}",
+                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
                         content);
                     if (response.IsSuccessStatusCode)
                     {
                         isSuccess = true;
+                        break;
+                    }
+                    else
+                    {
+                        var errBody = await response.Content.ReadAsStringAsync();
+                        lastError = $"Status: {response.StatusCode}, Body: {errBody}";
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    if (string.IsNullOrEmpty(apiKey2)) throw;
+                    lastError = ex.Message;
                 }
             }
 
-            if (!isSuccess && !string.IsNullOrEmpty(apiKey2))
+            if (!isSuccess)
             {
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                response = await _httpClient.PostAsync(
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey2}",
-                    content);
-                response.EnsureSuccessStatusCode();
-            }
-            else if (response != null)
-            {
-                response.EnsureSuccessStatusCode();
-            }
-            else
-            {
-                throw new Exception("Không thể thực hiện cuộc gọi đến Gemini API.");
+                throw new Exception($"Không thể thực hiện cuộc gọi đến Gemini API với các API Key hiện có. Lỗi gần nhất: {lastError}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
