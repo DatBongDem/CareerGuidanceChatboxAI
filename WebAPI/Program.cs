@@ -44,20 +44,13 @@ namespace WebAPI
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IPayOSService, PayOSService>();
 
-            builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
-            builder.Services.AddScoped<IUniversityService, UniversityService>();
-
-            builder.Services.AddScoped<IUserService, UserService>();
-
-            builder.Services.AddScoped<IRoleService, RoleService>();
-
-            builder.Services.AddScoped<IPlanService, PlanService>();
+          
 
             builder.Services.AddScoped<IEmailVerificationRepository,
                 EmailVerificationRepository>();
 
             builder.Services.AddScoped<IAuthService, AuthService>();
-
+            builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
             builder.Services.AddScoped<IPlanRepository, PlanRepository>();
@@ -74,12 +67,24 @@ namespace WebAPI
             builder.Services.AddScoped<IMajorRepository, MajorRepository>();
             builder.Services.AddScoped<IUserAnswerRepository, UserAnswerRepository>();
             builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+            builder.Services.AddScoped<ISkillRepository, SkillRepository>();
+            builder.Services.AddScoped<IMajorSkillRepository, MajorSkillRepository>();
+            builder.Services.AddScoped<IUniversityMajorRepository, UniversityMajorRepository>();
+            builder.Services.AddScoped<IUniversityMajorMethodRepository, UniversityMajorMethodRepository>();
 
 
 
             builder.Services.Configure<EmailSettings>(
                 builder.Configuration.GetSection("EmailSettings")
             );
+
+            builder.Services.AddScoped<IUniversityService, UniversityService>();
+
+            builder.Services.AddScoped<IUserService, UserService>();
+
+            builder.Services.AddScoped<IRoleService, RoleService>();
+
+            builder.Services.AddScoped<IPlanService, PlanService>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IRoleService, RoleService>();
@@ -97,6 +102,10 @@ namespace WebAPI
             builder.Services.AddScoped<IMajorService, MajorService>();
             builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
             builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+            builder.Services.AddScoped<ISkillService, SkillService>();
+            builder.Services.AddScoped<IMajorSkillService, MajorSkillService>();
+            builder.Services.AddScoped<IUniversityMajorService, UniversityMajorService>();
+            builder.Services.AddScoped<IUniversityMajorMethodService, UniversityMajorMethodService>();
 
 
             builder.Services.AddHttpClient();

@@ -5,23 +5,30 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers
 {
     [ApiController]
-    [Route("api/university")]
-    public class UniversityController : ControllerBase
+    [Route("api/university-major-method")]
+    public class UniversityMajorMethodController : ControllerBase
     {
-        private readonly IUniversityService _service;
+        private readonly IUniversityMajorMethodService _service;
 
-        public UniversityController(IUniversityService service)
+        public UniversityMajorMethodController(IUniversityMajorMethodService service)
         {
             _service = service;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAll(
-            string search = "",
+            Guid? universityId,
+            Guid? majorId,
+            Guid? methodId,
             int page = 1,
             int pageSize = 10)
         {
-            return Ok(await _service.GetAll(search, page, pageSize));
+            return Ok(await _service.GetAll(
+                universityId,
+                majorId,
+                methodId,
+                page,
+                pageSize));
         }
 
         [HttpGet("{id}")]
@@ -31,14 +38,14 @@ namespace API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] University entity)
+        public async Task<IActionResult> Create([FromBody] UniversityMajorMethod entity)
         {
             await _service.Create(entity);
             return Ok();
         }
 
         [HttpPut]
-        public async Task<IActionResult> Update([FromBody] University entity)
+        public async Task<IActionResult> Update([FromBody] UniversityMajorMethod entity)
         {
             await _service.Update(entity);
             return Ok();
