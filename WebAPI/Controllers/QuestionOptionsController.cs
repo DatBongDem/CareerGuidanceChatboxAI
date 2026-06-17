@@ -9,7 +9,7 @@ namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize]
     public class QuestionOptionsController : ControllerBase
     {
         private readonly IQuestionOptionService _service;
@@ -38,6 +38,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> Create(CreateQuestionOptionDto createDto)
         {
             try
@@ -52,6 +53,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> Update(Guid id, UpdateQuestionOptionDto updateDto)
         {
             try
@@ -70,6 +72,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _service.DeleteAsync(id);
