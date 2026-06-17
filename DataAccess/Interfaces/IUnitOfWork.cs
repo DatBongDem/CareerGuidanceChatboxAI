@@ -32,6 +32,8 @@ namespace DataAccess.Interfaces
         IQuestionOptionRepository QuestionOptionRepository { get; }
 
         IUserAnswerRepository UserAnswerRepository { get; }
+        IAiEvaluationRepository AiEvaluationRepository { get; }
+        IUserAiSummaryRepository UserAiSummaryRepository { get; }
 
         IRecommendationRepository RecommendationRepository { get; }
 
