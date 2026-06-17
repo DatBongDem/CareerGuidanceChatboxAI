@@ -1,4 +1,4 @@
-﻿using BusinessLogic.DTOs.ChatAI;
+using BusinessLogic.DTOs.ChatAI;
 using BusinessLogic.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +31,20 @@ namespace WebAPI.Controllers
             {
                 Answer = answer
             });
+        }
+
+        [Authorize]
+        [HttpPost("guided")]
+        public async Task<IActionResult> Guided(GuidedChatRequest request)
+        {
+            var userId = Guid.Parse(
+                User.FindFirst("UserId")!.Value);
+
+            var result = await _chatService.ContinueGuidedChatAsync(
+                userId,
+                request.Message);
+
+            return Ok(result);
         }
     }
 }
