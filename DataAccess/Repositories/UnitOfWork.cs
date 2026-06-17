@@ -1,4 +1,4 @@
-﻿using DataAccess.DataContext;
+using DataAccess.DataContext;
 using DataAccess.Interfaces;
 using System.Threading.Tasks;
 
@@ -27,6 +27,8 @@ namespace DataAccess.Repositories
       
         public IUniversityRepository UniversityRepository { get; private set; }
         public IUserAnswerRepository UserAnswerRepository { get; private set; }
+        public IAiEvaluationRepository AiEvaluationRepository { get; private set; }
+        public IUserAiSummaryRepository UserAiSummaryRepository { get; private set; }
         public IRecommendationRepository RecommendationRepository { get; private set; }
         public IUserProfileRepository   UserProfileRepository { get; private set; }
         public IMajorRepository MajorRepository { get; private set; }
@@ -75,6 +77,8 @@ namespace DataAccess.Repositories
             UniversityRepository = new UniversityRepository(_context);
 
             UserAnswerRepository = new UserAnswerRepository(_context);
+            AiEvaluationRepository = new AiEvaluationRepository(_context);
+            UserAiSummaryRepository = new UserAiSummaryRepository(_context);
             RecommendationRepository = new RecommendationRepository(_context);
             UserProfileRepository = new UserProfileRepository(_context);
             MajorRepository = new MajorRepository(_context);
