@@ -1,5 +1,6 @@
 using BusinessLogic.DTOs.ChatAI;
 using BusinessLogic.Interfaces;
+using DataAccess.Entities;
 using DataAccess.Entities.ChatAI;
 using DataAccess.Interfaces;
 using DataAccess.Shares;
@@ -68,36 +69,56 @@ namespace BusinessLogic.Services
                 }
             }
 
-            // 5. Load all universities
+            // 5. Load all universities, majors and university-majors
             var universities = (await _uow.UniversityRepository.GetAsync()).ToList();
+            var universityMajors = (await _uow.UniversityMajorRepository.GetAsync()).ToList();
+            var majors = (await _uow.MajorRepository.GetAsync()).ToList();
+
             var uniListSb = new StringBuilder();
             foreach (var uni in universities)
             {
-                uniListSb.AppendLine($"- [ID: {uni.UniversityId}] Tên: {uni.Name} ({uni.ShortName}), Địa chỉ: {uni.Location}, Xếp hạng: {uni.Ranking}");
+                var uniMajorIds = universityMajors.Where(um => um.UniversityId == uni.UniversityId).Select(um => um.MajorId).ToList();
+                var uniMajors = majors.Where(m => uniMajorIds.Contains(m.MajorId)).ToList();
+                var majorStrings = uniMajors.Select(m => $"[ID Ngành: {m.MajorId}] {m.Name ?? "Chưa đặt tên"}").ToList();
+                var majorListStr = majorStrings.Any() ? string.Join(", ", majorStrings) : "Không có ngành học nào được đăng ký";
+
+                uniListSb.AppendLine($"- [ID Trường: {uni.UniversityId}] Tên: {uni.Name} ({uni.ShortName}), Địa chỉ: {uni.Location}, Xếp hạng: {uni.Ranking}");
+                uniListSb.AppendLine($"  Các ngành học đào tạo: {majorListStr}");
             }
 
             // 6. Build prompt
             var prompt = $@"
 Bạn là một chuyên gia tư vấn tuyển sinh và định hướng nghề nghiệp hàng đầu.
-Hãy phân tích toàn bộ câu trả lời của người dùng dưới đây ở tất cả các chuyên mục để đưa ra đánh giá tổng quan và đề xuất trường đại học phù hợp nhất cho họ.
+Hãy phân tích toàn bộ câu trả lời của người dùng dưới đây ở tất cả các chuyên mục để đưa ra đánh giá tổng quan và đề xuất trường đại học cùng ngành học phù hợp nhất cho họ.
 
 Dữ liệu câu trả lời của người dùng:
 {sb.ToString()}
 
-Danh sách các trường đại học hiện có trong hệ thống của chúng tôi:
+Danh sách các trường đại học hiện có và các ngành học đào tạo tương ứng trong hệ thống của chúng tôi:
 {uniListSb.ToString()}
 
 Yêu cầu:
 1. Đưa ra nhận xét, đánh giá tổng quan (nhận xét chung) về thế mạnh, sở thích nghề nghiệp, định hướng tuyển sinh của người dùng dựa trên tất cả câu trả lời của họ.
 2. Từ danh sách các trường đại học được cung cấp ở trên, hãy chọn ra:
-   - 3 trường đại học phù hợp nhất (danh sách 'top3' chứa các ID dạng Guid tương ứng).
-   - 5 trường đại học phù hợp nhì (danh sách 'next5' chứa các ID dạng Guid tương ứng).
-   *Chú ý: Tuyệt đối chỉ chọn từ danh sách ID được cung cấp ở trên. Không tự ý bịa ra ID trường nằm ngoài danh sách. Nếu số lượng trường trong hệ thống ít hơn, hãy xếp tất cả các trường có thể vào 'top3' hoặc 'next5' và để trống phần còn lại.*
+   - 3 trường đại học phù hợp nhất (danh sách 'top3' chứa các đề xuất tương ứng).
+   - 5 trường đại học phù hợp nhì (danh sách 'next5' chứa các đề xuất tương ứng).
+   *Chú ý: Đối với mỗi trường đại học được chọn, hãy gợi ý từ 1-2 ngành học đào tạo phù hợp nhất của chính trường đó (sử dụng đúng ID Ngành được cung cấp dưới trường đó).*
+   *Tuyệt đối chỉ chọn từ danh sách ID Trường và ID Ngành học được cung cấp ở trên. Không tự ý bịa ra ID nằm ngoài danh sách.*
 3. Trả về kết quả dưới dạng JSON hợp lệ khớp chính xác với cấu trúc C# sau:
 {{
   ""summaryText"": ""Nội dung nhận xét tổng quan bằng tiếng Việt... (dùng markdown nếu cần thiết)"",
-  ""top3"": [""guid1"", ""guid2"", ""guid3""],
-  ""next5"": [""guid1"", ""guid2"", ""guid3"", ""guid4"", ""guid5""]
+  ""top3"": [
+    {{
+      ""universityId"": ""id-truong-1"",
+      ""majorIds"": [""id-nganh-1"", ""id-nganh-2""]
+    }}
+  ],
+  ""next5"": [
+    {{
+      ""universityId"": ""id-truong-2"",
+      ""majorIds"": [""id-nganh-3""]
+    }}
+  ]
 }}
 Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON này.
 ";
@@ -158,18 +179,8 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
                 throw new Exception("Lỗi phân tích kết quả phản hồi của AI.");
             }
 
-            var top3Guids = geminiResult.top3
-                .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
-                .Where(g => g != Guid.Empty)
-                .ToList();
-
-            var next5Guids = geminiResult.next5
-                .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
-                .Where(g => g != Guid.Empty)
-                .ToList();
-
-            var top3Str = string.Join(",", top3Guids);
-            var next5Str = string.Join(",", next5Guids);
+            var top3Str = JsonSerializer.Serialize(geminiResult.top3);
+            var next5Str = JsonSerializer.Serialize(geminiResult.next5);
 
             // 9. Save or Update in database
             var existing = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
@@ -178,8 +189,8 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             {
                 entityId = existing.Id;
                 existing.SummaryText = geminiResult.summaryText;
-                existing.Top3UniversityIds = top3Str;
-                existing.Next5UniversityIds = next5Str;
+                existing.Top3Recommendations = top3Str;
+                existing.Next5Recommendations = next5Str;
                 existing.CreatedAt = DateTime.UtcNow;
                 await _uow.UserAiSummaryRepository.UpdateAsync(existing);
             }
@@ -191,8 +202,8 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
                     Id = entityId,
                     UserId = userId,
                     SummaryText = geminiResult.summaryText,
-                    Top3UniversityIds = top3Str,
-                    Next5UniversityIds = next5Str,
+                    Top3Recommendations = top3Str,
+                    Next5Recommendations = next5Str,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _uow.UserAiSummaryRepository.AddAsync(newSummary);
@@ -200,47 +211,8 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
 
             await _uow.SaveAsync();
 
-            // 10. Load detailed university data
-            var allTargetIds = top3Guids.Concat(next5Guids).Distinct().ToList();
-            var loadedUnis = (await _uow.UniversityRepository.GetAsync(u => allTargetIds.Contains(u.UniversityId))).ToList();
-
-            var top3Unis = top3Guids
-                .Select(id => loadedUnis.FirstOrDefault(u => u.UniversityId == id))
-                .Where(u => u != null)
-                .Select(u => new UniversityDto
-                {
-                    UniversityId = u!.UniversityId,
-                    Name = u.Name,
-                    ShortName = u.ShortName,
-                    Location = u.Location,
-                    Ranking = u.Ranking,
-                    Avatar = u.Avatar
-                })
-                .ToList();
-
-            var next5Unis = next5Guids
-                .Select(id => loadedUnis.FirstOrDefault(u => u.UniversityId == id))
-                .Where(u => u != null)
-                .Select(u => new UniversityDto
-                {
-                    UniversityId = u!.UniversityId,
-                    Name = u.Name,
-                    ShortName = u.ShortName,
-                    Location = u.Location,
-                    Ranking = u.Ranking,
-                    Avatar = u.Avatar
-                })
-                .ToList();
-
-            return new UserAiSummaryResponseDto
-            {
-                Id = entityId,
-                UserId = userId,
-                SummaryText = geminiResult.summaryText,
-                CreatedAt = DateTime.UtcNow,
-                Top3Universities = top3Unis,
-                Next5Universities = next5Unis
-            };
+            // 10. Map detailed data
+            return MapToResponseDto(entityId, userId, geminiResult.summaryText, DateTime.UtcNow, geminiResult.top3, geminiResult.next5, universities, majors);
         }
 
         public async Task<UserAiSummaryResponseDto?> GetOverallSummaryAsync(Guid userId)
@@ -248,55 +220,106 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             var summary = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
             if (summary == null) return null;
 
-            var top3Guids = summary.Top3UniversityIds
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
-                .Where(g => g != Guid.Empty)
-                .ToList();
+            var top3UnisInfo = string.IsNullOrEmpty(summary.Top3Recommendations) 
+                ? new List<RecommendedUniInfo>() 
+                : JsonSerializer.Deserialize<List<RecommendedUniInfo>>(summary.Top3Recommendations) ?? new List<RecommendedUniInfo>();
 
-            var next5Guids = summary.Next5UniversityIds
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
-                .Where(g => g != Guid.Empty)
-                .ToList();
+            var next5UnisInfo = string.IsNullOrEmpty(summary.Next5Recommendations) 
+                ? new List<RecommendedUniInfo>() 
+                : JsonSerializer.Deserialize<List<RecommendedUniInfo>>(summary.Next5Recommendations) ?? new List<RecommendedUniInfo>();
 
-            var allTargetIds = top3Guids.Concat(next5Guids).Distinct().ToList();
-            var loadedUnis = (await _uow.UniversityRepository.GetAsync(u => allTargetIds.Contains(u.UniversityId))).ToList();
+            var allUniIds = top3UnisInfo.Select(u => Guid.TryParse(u.universityId, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty)
+                .Concat(next5UnisInfo.Select(u => Guid.TryParse(u.universityId, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty))
+                .Distinct().ToList();
 
-            var top3Unis = top3Guids
-                .Select(id => loadedUnis.FirstOrDefault(u => u.UniversityId == id))
-                .Where(u => u != null)
-                .Select(u => new UniversityDto
-                {
-                    UniversityId = u!.UniversityId,
-                    Name = u.Name,
-                    ShortName = u.ShortName,
-                    Location = u.Location,
-                    Ranking = u.Ranking,
-                    Avatar = u.Avatar
+            var allMajorIds = top3UnisInfo.SelectMany(u => u.majorIds).Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty)
+                .Concat(next5UnisInfo.SelectMany(u => u.majorIds).Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty))
+                .Distinct().ToList();
+
+            var loadedUnis = (await _uow.UniversityRepository.GetAsync(u => allUniIds.Contains(u.UniversityId))).ToList();
+            var loadedMajors = (await _uow.MajorRepository.GetAsync(m => allMajorIds.Contains(m.MajorId))).ToList();
+
+            return MapToResponseDto(summary.Id, userId, summary.SummaryText, summary.CreatedAt, top3UnisInfo, next5UnisInfo, loadedUnis, loadedMajors);
+        }
+
+        private UserAiSummaryResponseDto MapToResponseDto(
+            Guid id,
+            Guid userId,
+            string summaryText,
+            DateTime createdAt,
+            List<RecommendedUniInfo> top3Info,
+            List<RecommendedUniInfo> next5Info,
+            List<University> loadedUnis,
+            List<Major> loadedMajors)
+        {
+            var top3Unis = top3Info
+                .Select(info => {
+                    if (!Guid.TryParse(info.universityId, out var uniGuid)) return null;
+                    var uni = loadedUnis.FirstOrDefault(u => u.UniversityId == uniGuid);
+                    if (uni == null) return null;
+
+                    var suitableMajors = info.majorIds
+                        .Select(mid => Guid.TryParse(mid, out var mGuid) ? mGuid : Guid.Empty)
+                        .Select(mGuid => loadedMajors.FirstOrDefault(m => m.MajorId == mGuid))
+                        .Where(m => m != null)
+                        .Select(m => new MajorDto {
+                            MajorId = m!.MajorId,
+                            Name = m.Name ?? string.Empty,
+                            Description = m.Description ?? string.Empty
+                        })
+                        .ToList();
+
+                    return new RecommendedUniversityDto {
+                        UniversityId = uni.UniversityId,
+                        Name = uni.Name,
+                        ShortName = uni.ShortName,
+                        Location = uni.Location,
+                        Ranking = uni.Ranking,
+                        Avatar = uni.Avatar,
+                        SuitableMajors = suitableMajors
+                    };
                 })
+                .Where(u => u != null)
+                .Select(u => u!)
                 .ToList();
 
-            var next5Unis = next5Guids
-                .Select(id => loadedUnis.FirstOrDefault(u => u.UniversityId == id))
-                .Where(u => u != null)
-                .Select(u => new UniversityDto
-                {
-                    UniversityId = u!.UniversityId,
-                    Name = u.Name,
-                    ShortName = u.ShortName,
-                    Location = u.Location,
-                    Ranking = u.Ranking,
-                    Avatar = u.Avatar
+            var next5Unis = next5Info
+                .Select(info => {
+                    if (!Guid.TryParse(info.universityId, out var uniGuid)) return null;
+                    var uni = loadedUnis.FirstOrDefault(u => u.UniversityId == uniGuid);
+                    if (uni == null) return null;
+
+                    var suitableMajors = info.majorIds
+                        .Select(mid => Guid.TryParse(mid, out var mGuid) ? mGuid : Guid.Empty)
+                        .Select(mGuid => loadedMajors.FirstOrDefault(m => m.MajorId == mGuid))
+                        .Where(m => m != null)
+                        .Select(m => new MajorDto {
+                            MajorId = m!.MajorId,
+                            Name = m.Name ?? string.Empty,
+                            Description = m.Description ?? string.Empty
+                        })
+                        .ToList();
+
+                    return new RecommendedUniversityDto {
+                        UniversityId = uni.UniversityId,
+                        Name = uni.Name,
+                        ShortName = uni.ShortName,
+                        Location = uni.Location,
+                        Ranking = uni.Ranking,
+                        Avatar = uni.Avatar,
+                        SuitableMajors = suitableMajors
+                    };
                 })
+                .Where(u => u != null)
+                .Select(u => u!)
                 .ToList();
 
             return new UserAiSummaryResponseDto
             {
-                Id = summary.Id,
-                UserId = summary.UserId,
-                SummaryText = summary.SummaryText,
-                CreatedAt = summary.CreatedAt,
+                Id = id,
+                UserId = userId,
+                SummaryText = summaryText,
+                CreatedAt = createdAt,
                 Top3Universities = top3Unis,
                 Next5Universities = next5Unis
             };
@@ -305,8 +328,14 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
         private class GeminiSummaryResponse
         {
             public string summaryText { get; set; } = string.Empty;
-            public List<string> top3 { get; set; } = new List<string>();
-            public List<string> next5 { get; set; } = new List<string>();
+            public List<RecommendedUniInfo> top3 { get; set; } = new List<RecommendedUniInfo>();
+            public List<RecommendedUniInfo> next5 { get; set; } = new List<RecommendedUniInfo>();
+        }
+
+        private class RecommendedUniInfo
+        {
+            public string universityId { get; set; } = string.Empty;
+            public List<string> majorIds { get; set; } = new List<string>();
         }
     }
 }
