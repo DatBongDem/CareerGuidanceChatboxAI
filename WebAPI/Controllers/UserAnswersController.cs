@@ -101,5 +101,35 @@ namespace WebAPI.Controllers
                 message = "Deleted all user answers successfully"
             });
         }
+
+        [HttpPut]
+        public async Task<IActionResult> Update(UpdateUserAnswerDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new { success = false, message = "User is not logged in." });
+            }
+            var userId = Guid.Parse(userIdClaim);
+
+            try
+            {
+                var result = await _service.UpdateAsync(userId, dto.QuestionId, dto.Answer);
+                return Ok(new
+                {
+                    success = true,
+                    message = "Updated successfully",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        }
     }
 }

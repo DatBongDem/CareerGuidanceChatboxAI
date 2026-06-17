@@ -73,9 +73,63 @@ namespace BusinessLogic.Services
             {
                 await _uow.UserAnswerRepository.DeleteAsync(answer.UserAnswerId);
             }
+
+            // Xóa đánh giá chuyên mục liên quan
+            var evaluations = await _uow.AiEvaluationRepository.GetAsync(e => e.UserId == userId);
+            foreach (var eval in evaluations)
+            {
+                await _uow.AiEvaluationRepository.DeleteAsync(eval.Id);
+            }
+
+            // Xóa tổng kết chung liên quan
+            var summaries = await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId);
+            foreach (var summary in summaries)
+            {
+                await _uow.UserAiSummaryRepository.DeleteAsync(summary.Id);
+            }
+
             await _uow.SaveAsync();
 
             return true;
+        }
+
+        public async Task<UserAnswer> UpdateAsync(Guid userId, Guid questionId, string newAnswer)
+        {
+            var question = await _uow.QuestionRepository.GetByIdAsync(questionId);
+            if (question == null)
+            {
+                throw new Exception("Không tìm thấy câu hỏi");
+            }
+
+            var existing = (await _uow.UserAnswerRepository.GetAsync(a => a.UserId == userId && a.QuestionId == questionId)).FirstOrDefault();
+            if (existing == null)
+            {
+                throw new Exception("Bạn chưa trả lời câu hỏi này, không thể sửa");
+            }
+
+            existing.Answer = newAnswer;
+            existing.AnsweredAt = DateTime.UtcNow;
+
+            await _uow.UserAnswerRepository.UpdateAsync(existing);
+
+            // Xóa đánh giá chuyên mục cũ
+            var categoryId = question.CategoryId;
+            var existingEval = (await _uow.AiEvaluationRepository.GetAsync(e => e.UserId == userId && e.CategoryId == categoryId)).FirstOrDefault();
+            if (existingEval != null)
+            {
+                await _uow.AiEvaluationRepository.DeleteAsync(existingEval.Id);
+            }
+
+            // Xóa tổng kết chung cũ
+            var existingSummary = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
+            if (existingSummary != null)
+            {
+                await _uow.UserAiSummaryRepository.DeleteAsync(existingSummary.Id);
+            }
+
+            await _uow.SaveAsync();
+
+            return existing;
         }
     }
 }

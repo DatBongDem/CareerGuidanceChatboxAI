@@ -10,5 +10,6 @@ namespace BusinessLogic.Interfaces
         Task<bool> DeleteAsync(Guid id);
         Task<IEnumerable<UserAnswer>> GetByUserIdAsync(Guid userId);
         Task<bool> DeleteByUserIdAsync(Guid userId);
+        Task<UserAnswer> UpdateAsync(Guid userId, Guid questionId, string newAnswer);
     }
 }
