@@ -33,25 +33,28 @@ namespace BusinessLogic.Services
 
         public async Task<UserAiSummaryResponseDto> EvaluateOverallAsync(Guid userId)
         {
-            // 1. Fetch active questions
-            var activeQuestions = (await _uow.QuestionRepository.GetAsync(q => q.IsActice == StatusEnum.Yes)).ToList();
+            // 1. Fetch non-chat-AI categories
+            var categories = (await _uow.QuestionCategoryRepository.GetAsync(c => !c.IsChatAi)).OrderBy(c => c.DisplayOrder).ToList();
+            var categoryIds = categories.Select(c => c.Id).ToList();
+
+            // 2. Fetch active questions in these traditional categories
+            var activeQuestions = (await _uow.QuestionRepository.GetAsync(q => q.IsActice == StatusEnum.Yes && categoryIds.Contains(q.CategoryId))).ToList();
             if (!activeQuestions.Any())
             {
-                throw new Exception("Hệ thống chưa cấu hình câu hỏi nào.");
+                throw new Exception("Hệ thống chưa cấu hình câu hỏi nào cho chuyên mục định hướng.");
             }
 
-            // 2. Fetch user answers
+            // 3. Fetch user answers
             var questionIds = activeQuestions.Select(q => q.Id).ToList();
             var userAnswers = (await _uow.UserAnswerRepository.GetAsync(a => a.UserId == userId && questionIds.Contains(a.QuestionId))).ToList();
 
-            // 3. Verify that all questions are answered
+            // 4. Verify that all questions are answered
             if (userAnswers.Count < activeQuestions.Count)
             {
-                throw new Exception("Bạn cần hoàn thành trả lời đầy đủ tất cả câu hỏi của toàn bộ các chuyên mục để nhận nhận xét tổng quan và đề xuất trường đại học.");
+                throw new Exception("Bạn cần hoàn thành trả lời đầy đủ tất cả câu hỏi của toàn bộ các chuyên mục định hướng để nhận nhận xét tổng quan và đề xuất trường đại học.");
             }
 
-            // 4. Load all categories and construct prompt details
-            var categories = (await _uow.QuestionCategoryRepository.GetAsync()).OrderBy(c => c.DisplayOrder).ToList();
+            // 5. Construct prompt details
             var sb = new StringBuilder();
 
             foreach (var cat in categories)
@@ -124,8 +127,10 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
 ";
 
             // 7. Request Gemini API in JSON mode
-            var apiKey = _configuration["Gemini:ApiKey"];
-            if (string.IsNullOrEmpty(apiKey))
+            var apiKey1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
+            var apiKey2 = _configuration["Gemini:ApiKey2"];
+
+            if (string.IsNullOrEmpty(apiKey1) && string.IsNullOrEmpty(apiKey2))
             {
                 throw new Exception("Chưa cấu hình API Key của Gemini.");
             }
@@ -149,13 +154,44 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             };
 
             var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            HttpResponseMessage response = null!;
+            bool isSuccess = false;
 
-            var response = await _httpClient.PostAsync(
-                $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}",
-                content);
+            if (!string.IsNullOrEmpty(apiKey1))
+            {
+                try
+                {
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    response = await _httpClient.PostAsync(
+                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey1}",
+                        content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        isSuccess = true;
+                    }
+                }
+                catch
+                {
+                    if (string.IsNullOrEmpty(apiKey2)) throw;
+                }
+            }
 
-            response.EnsureSuccessStatusCode();
+            if (!isSuccess && !string.IsNullOrEmpty(apiKey2))
+            {
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                response = await _httpClient.PostAsync(
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey2}",
+                    content);
+                response.EnsureSuccessStatusCode();
+            }
+            else if (response != null)
+            {
+                response.EnsureSuccessStatusCode();
+            }
+            else
+            {
+                throw new Exception("Không thể thực hiện cuộc gọi đến Gemini API.");
+            }
 
             var responseJson = await response.Content.ReadAsStringAsync();
             using var document = JsonDocument.Parse(responseJson);
@@ -240,6 +276,222 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             var loadedMajors = (await _uow.MajorRepository.GetAsync(m => allMajorIds.Contains(m.MajorId))).ToList();
 
             return MapToResponseDto(summary.Id, userId, summary.SummaryText, summary.CreatedAt, top3UnisInfo, next5UnisInfo, loadedUnis, loadedMajors);
+        }
+
+        public async Task<UserAiSummaryResponseDto> EvaluateChatAiOverallAsync(Guid userId)
+        {
+            // 1. Fetch Chat AI category
+            var chatCategory = (await _uow.QuestionCategoryRepository.GetAsync(c => c.IsChatAi)).FirstOrDefault();
+            if (chatCategory == null)
+            {
+                throw new Exception("Không tìm thấy chuyên mục Chat AI.");
+            }
+
+            // 2. Fetch active questions in Chat AI category
+            var activeQuestions = (await _uow.QuestionRepository.GetAsync(q => q.CategoryId == chatCategory.Id && q.IsActice == StatusEnum.Yes)).ToList();
+            if (!activeQuestions.Any())
+            {
+                throw new Exception("Chuyên mục Chat AI chưa được cấu hình câu hỏi nào.");
+            }
+
+            // 3. Fetch user answers
+            var questionIds = activeQuestions.Select(q => q.Id).ToList();
+            var userAnswers = (await _uow.UserAnswerRepository.GetAsync(a => a.UserId == userId && questionIds.Contains(a.QuestionId))).ToList();
+
+            // 4. Verify that all questions are answered
+            if (userAnswers.Count < activeQuestions.Count)
+            {
+                throw new Exception("Bạn cần trả lời đầy đủ tất cả câu hỏi trong Chat AI để nhận nhận xét tổng kết và đề xuất trường đại học.");
+            }
+
+            // 5. Construct prompt details
+            var sb = new StringBuilder();
+            sb.AppendLine($"Chuyên mục: {chatCategory.Name}");
+            for (int i = 0; i < activeQuestions.Count; i++)
+            {
+                var q = activeQuestions[i];
+                var ans = userAnswers.FirstOrDefault(a => a.QuestionId == q.Id);
+                sb.AppendLine($"  {i + 1}. Câu hỏi: {q.Content}");
+                sb.AppendLine($"     Câu trả lời: {ans?.Answer}");
+            }
+
+            // 6. Load all universities, majors and university-majors
+            var universities = (await _uow.UniversityRepository.GetAsync()).ToList();
+            var universityMajors = (await _uow.UniversityMajorRepository.GetAsync()).ToList();
+            var majors = (await _uow.MajorRepository.GetAsync()).ToList();
+
+            var uniListSb = new StringBuilder();
+            foreach (var uni in universities)
+            {
+                var uniMajorIds = universityMajors.Where(um => um.UniversityId == uni.UniversityId).Select(um => um.MajorId).ToList();
+                var uniMajors = majors.Where(m => uniMajorIds.Contains(m.MajorId)).ToList();
+                var majorStrings = uniMajors.Select(m => $"[ID Ngành: {m.MajorId}] {m.Name ?? "Chưa đặt tên"}").ToList();
+                var majorListStr = majorStrings.Any() ? string.Join(", ", majorStrings) : "Không có ngành học nào được đăng ký";
+
+                uniListSb.AppendLine($"- [ID Trường: {uni.UniversityId}] Tên: {uni.Name} ({uni.ShortName}), Địa chỉ: {uni.Location}, Xếp hạng: {uni.Ranking}");
+                uniListSb.AppendLine($"  Các ngành học đào tạo: {majorListStr}");
+            }
+
+            // 7. Build prompt
+            var prompt = $@"
+Bạn là một chuyên gia tư vấn tuyển sinh và định hướng nghề nghiệp hàng đầu.
+Hãy phân tích toàn bộ câu trả lời của người dùng dưới đây trong cuộc trò chuyện Chat AI để đưa ra đánh giá tổng quan và đề xuất trường đại học cùng ngành học phù hợp nhất cho họ.
+
+Dữ liệu câu trả lời của người dùng:
+{sb.ToString()}
+
+Danh sách các trường đại học hiện có và các ngành học đào tạo tương ứng trong hệ thống của chúng tôi:
+{uniListSb.ToString()}
+
+Yêu cầu:
+1. Đưa ra nhận xét, đánh giá tổng quan (nhận xét chung) về thế mạnh, sở thích nghề nghiệp, định hướng tuyển sinh của người dùng dựa trên tất cả câu trả lời của họ.
+2. Từ danh sách các trường đại học được cung cấp ở trên, hãy chọn ra:
+   - 3 trường đại học phù hợp nhất (danh sách 'top3' chứa các đề xuất tương ứng).
+   - 5 trường đại học phù hợp nhì (danh sách 'next5' chứa các đề xuất tương ứng).
+   *Chú ý: Đối với mỗi trường đại học được chọn, hãy gợi ý từ 1-2 ngành học đào tạo phù hợp nhất của chính trường đó (sử dụng đúng ID Ngành được cung cấp dưới trường đó).*
+   *Tuyệt đối chỉ chọn từ danh sách ID Trường và ID Ngành học được cung cấp ở trên. Không tự ý bịa ra ID nằm ngoài danh sách.*
+3. Trả về kết quả dưới dạng JSON hợp lệ khớp chính xác với cấu trúc C# sau:
+{{
+  ""summaryText"": ""Nội dung nhận xét tổng quan bằng tiếng Việt... (dùng markdown nếu cần thiết)"",
+  ""top3"": [
+    {{
+      ""universityId"": ""id-truong-1"",
+      ""majorIds"": [""id-nganh-1"", ""id-nganh-2""]
+    }}
+  ],
+  ""next5"": [
+    {{
+      ""universityId"": ""id-truong-2"",
+      ""majorIds"": [""id-nganh-3""]
+    }}
+  ]
+}}
+Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON này.
+";
+
+            // 8. Request Gemini API in JSON mode
+            var apiKey1 = _configuration["Gemini:ApiKey1"] ?? _configuration["Gemini:ApiKey"];
+            var apiKey2 = _configuration["Gemini:ApiKey2"];
+
+            if (string.IsNullOrEmpty(apiKey1) && string.IsNullOrEmpty(apiKey2))
+            {
+                throw new Exception("Chưa cấu hình API Key của Gemini.");
+            }
+
+            var requestBody = new
+            {
+                contents = new[]
+                {
+                    new
+                    {
+                        parts = new[]
+                        {
+                            new { text = prompt }
+                        }
+                    }
+                },
+                generationConfig = new
+                {
+                    responseMimeType = "application/json"
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            HttpResponseMessage response = null!;
+            bool isSuccess = false;
+
+            if (!string.IsNullOrEmpty(apiKey1))
+            {
+                try
+                {
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    response = await _httpClient.PostAsync(
+                        $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey1}",
+                        content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        isSuccess = true;
+                    }
+                }
+                catch
+                {
+                    if (string.IsNullOrEmpty(apiKey2)) throw;
+                }
+            }
+
+            if (!isSuccess && !string.IsNullOrEmpty(apiKey2))
+            {
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                response = await _httpClient.PostAsync(
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey2}",
+                    content);
+                response.EnsureSuccessStatusCode();
+            }
+            else if (response != null)
+            {
+                response.EnsureSuccessStatusCode();
+            }
+            else
+            {
+                throw new Exception("Không thể thực hiện cuộc gọi đến Gemini API.");
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(responseJson);
+
+            var rawAnswerJson = document.RootElement
+                .GetProperty("candidates")[0]
+                .GetProperty("content")
+                .GetProperty("parts")[0]
+                .GetProperty("text")
+                .GetString();
+
+            if (string.IsNullOrEmpty(rawAnswerJson))
+            {
+                throw new Exception("Không nhận được câu trả lời từ AI.");
+            }
+
+            // 9. Parse JSON response
+            var geminiResult = JsonSerializer.Deserialize<GeminiSummaryResponse>(rawAnswerJson);
+            if (geminiResult == null)
+            {
+                throw new Exception("Lỗi phân tích kết quả phản hồi của AI.");
+            }
+
+            var top3Str = JsonSerializer.Serialize(geminiResult.top3);
+            var next5Str = JsonSerializer.Serialize(geminiResult.next5);
+
+            // 10. Save or Update in database
+            var existing = (await _uow.UserAiSummaryRepository.GetAsync(s => s.UserId == userId)).FirstOrDefault();
+            Guid entityId;
+            if (existing != null)
+            {
+                entityId = existing.Id;
+                existing.SummaryText = geminiResult.summaryText;
+                existing.Top3Recommendations = top3Str;
+                existing.Next5Recommendations = next5Str;
+                existing.CreatedAt = DateTime.UtcNow;
+                await _uow.UserAiSummaryRepository.UpdateAsync(existing);
+            }
+            else
+            {
+                entityId = Guid.NewGuid();
+                var newSummary = new UserAiSummary
+                {
+                    Id = entityId,
+                    UserId = userId,
+                    SummaryText = geminiResult.summaryText,
+                    Top3Recommendations = top3Str,
+                    Next5Recommendations = next5Str,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _uow.UserAiSummaryRepository.AddAsync(newSummary);
+            }
+
+            await _uow.SaveAsync();
+
+            // 11. Map detailed data
+            return MapToResponseDto(entityId, userId, geminiResult.summaryText, DateTime.UtcNow, geminiResult.top3, geminiResult.next5, universities, majors);
         }
 
         private UserAiSummaryResponseDto MapToResponseDto(
