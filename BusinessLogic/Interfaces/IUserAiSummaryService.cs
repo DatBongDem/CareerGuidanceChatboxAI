@@ -8,5 +8,6 @@ namespace BusinessLogic.Interfaces
     {
         Task<UserAiSummaryResponseDto> EvaluateOverallAsync(Guid userId);
         Task<UserAiSummaryResponseDto?> GetOverallSummaryAsync(Guid userId);
+        Task<UserAiSummaryResponseDto> EvaluateChatAiOverallAsync(Guid userId);
     }
 }

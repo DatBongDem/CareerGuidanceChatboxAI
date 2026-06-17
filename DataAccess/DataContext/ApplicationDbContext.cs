@@ -137,6 +137,9 @@ namespace DataAccess.DataContext
                 .WithMany()
                 .HasForeignKey(ae => ae.CategoryId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            
+            
         }
     }
 }
