@@ -120,20 +120,22 @@ Yêu cầu:
 2. Từ danh sách các trường đại học được cung cấp ở trên, hãy chọn ra:
    - 3 trường đại học phù hợp nhất (danh sách 'top3' chứa các đề xuất tương ứng).
    - 5 trường đại học phù hợp nhì (danh sách 'next5' chứa các đề xuất tương ứng).
-   *Chú ý: Đối với mỗi trường đại học được chọn, hãy gợi ý từ 1-2 ngành học đào tạo phù hợp nhất của chính trường đó (sử dụng đúng ID Ngành được cung cấp dưới trường đó).*
+   *Chú ý: Đối với mỗi trường đại học được chọn, hãy gợi ý từ 1-2 ngành học đào tạo phù hợp nhất của chính trường đó (sử dụng đúng ID Ngành được cung cấp dưới trường đó) và đánh giá tỷ lệ phần trăm độ phù hợp của trường này với người dùng (là số nguyên từ 0 đến 100, ví dụ 80, 75, lưu vào trường 'matchPercentage').*
    *Tuyệt đối chỉ chọn từ danh sách ID Trường và ID Ngành học được cung cấp ở trên. Không tự ý bịa ra ID nằm ngoài danh sách.*
-3. Trả về kết quả dưới dạng JSON hợp lệ khớp chính xác với cấu trúc C# sau:
+3. Trả về kết quả dưới dạng JSON hợp lệ khớp chính xác với cấu trúc sau:
 {{
   ""summaryText"": ""Nội dung nhận xét tổng quan bằng tiếng Việt... (dùng markdown nếu cần thiết)"",
   ""top3"": [
     {{
       ""universityId"": ""id-truong-1"",
+      ""matchPercentage"": 85,
       ""majorIds"": [""id-nganh-1"", ""id-nganh-2""]
     }}
   ],
   ""next5"": [
     {{
       ""universityId"": ""id-truong-2"",
+      ""matchPercentage"": 70,
       ""majorIds"": [""id-nganh-3""]
     }}
   ]
@@ -400,20 +402,22 @@ Yêu cầu:
 2. Từ danh sách các trường đại học được cung cấp ở trên, hãy chọn ra:
    - 3 trường đại học phù hợp nhất (danh sách 'top3' chứa các đề xuất tương ứng).
    - 5 trường đại học phù hợp nhì (danh sách 'next5' chứa các đề xuất tương ứng).
-   *Chú ý: Đối với mỗi trường đại học được chọn, hãy gợi ý từ 1-2 ngành học đào tạo phù hợp nhất của chính trường đó (sử dụng đúng ID Ngành được cung cấp dưới trường đó).*
+   *Chú ý: Đối với mỗi trường đại học được chọn, hãy gợi ý từ 1-2 ngành học đào tạo phù hợp nhất của chính trường đó (sử dụng đúng ID Ngành được cung cấp dưới trường đó) và đánh giá tỷ lệ phần trăm độ phù hợp của trường này với người dùng (là số nguyên từ 0 đến 100, ví dụ 80, 75, lưu vào trường 'matchPercentage').*
    *Tuyệt đối chỉ chọn từ danh sách ID Trường và ID Ngành học được cung cấp ở trên. Không tự ý bịa ra ID nằm ngoài danh sách.*
-3. Trả về kết quả dưới dạng JSON hợp lệ khớp chính xác với cấu trúc C# sau:
+3. Trả về kết quả dưới dạng JSON hợp lệ khớp chính xác với cấu trúc sau:
 {{
   ""summaryText"": ""Nội dung nhận xét tổng quan bằng tiếng Việt... (dùng markdown nếu cần thiết)"",
   ""top3"": [
     {{
       ""universityId"": ""id-truong-1"",
+      ""matchPercentage"": 85,
       ""majorIds"": [""id-nganh-1"", ""id-nganh-2""]
     }}
   ],
   ""next5"": [
     {{
       ""universityId"": ""id-truong-2"",
+      ""matchPercentage"": 70,
       ""majorIds"": [""id-nganh-3""]
     }}
   ]
@@ -602,6 +606,7 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
                         Location = uni.Location,
                         Ranking = uni.Ranking,
                         Avatar = uni.Avatar,
+                        MatchPercentage = info.matchPercentage,
                         SuitableMajors = suitableMajors
                     };
                 })
@@ -633,6 +638,7 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
                         Location = uni.Location,
                         Ranking = uni.Ranking,
                         Avatar = uni.Avatar,
+                        MatchPercentage = info.matchPercentage,
                         SuitableMajors = suitableMajors
                     };
                 })
@@ -662,6 +668,7 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
         {
             public string universityId { get; set; } = string.Empty;
             public List<string> majorIds { get; set; } = new List<string>();
+            public int matchPercentage { get; set; }
         }
     }
 }

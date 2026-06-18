@@ -21,6 +21,7 @@ namespace BusinessLogic.DTOs.ChatAI
         public string Location { get; set; } = string.Empty;
         public double Ranking { get; set; }
         public string? Avatar { get; set; }
+        public int MatchPercentage { get; set; }
         public List<MajorDto> SuitableMajors { get; set; } = new List<MajorDto>();
     }
 
