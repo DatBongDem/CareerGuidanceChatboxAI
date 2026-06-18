@@ -46,5 +46,30 @@ namespace WebAPI.Controllers
 
             return Ok(result);
         }
+
+        [Authorize]
+        [HttpDelete("guided")]
+        public async Task<IActionResult> ResetGuidedChat()
+        {
+            var userId = Guid.Parse(
+                User.FindFirst("UserId")!.Value);
+
+            var success = await _chatService.ResetGuidedChatAsync(userId);
+
+            if (!success)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Không tìm thấy dữ liệu chat hoặc không thể xóa lịch sử chat AI."
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "Đã xóa lịch sử chat AI thành công."
+            });
+        }
     }
 }

@@ -11,5 +11,6 @@ namespace BusinessLogic.Interfaces
     {
         Task<string> AskAIAsync(Guid userId, string question);
         Task<GuidedChatResponse> ContinueGuidedChatAsync(Guid userId, string? userMessage);
+        Task<bool> ResetGuidedChatAsync(Guid userId);
     }
 }

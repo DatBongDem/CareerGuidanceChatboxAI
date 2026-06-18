@@ -589,6 +589,64 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             return JsonSerializer.Deserialize<T>(rawAnswerJson);
         }
 
+        public async Task<bool> ResetGuidedChatAsync(Guid userId)
+        {
+            // 1. Get Chat AI category
+            var chatCategory = (await _unitOfWork.QuestionCategoryRepository.GetAsync(c => c.IsChatAi)).FirstOrDefault();
+            if (chatCategory == null)
+            {
+                return false;
+            }
+
+            // 2. Get active questions in Chat AI category
+            var chatQuestions = (await _unitOfWork.QuestionRepository.GetAsync(
+                q => q.CategoryId == chatCategory.Id
+            )).ToList();
+
+            if (!chatQuestions.Any())
+            {
+                return false;
+            }
+
+            // 3. Load user answers for these questions
+            var questionIds = chatQuestions.Select(q => q.Id).ToList();
+            var userAnswers = (await _unitOfWork.UserAnswerRepository.GetAsync(
+                a => a.UserId == userId && questionIds.Contains(a.QuestionId)
+            )).ToList();
+
+            if (!userAnswers.Any())
+            {
+                // Vẫn dọn dẹp UserAiSummary nếu tồn tại
+                var summaries = await _unitOfWork.UserAiSummaryRepository.GetAsync(s => s.UserId == userId);
+                if (summaries.Any())
+                {
+                    foreach (var summary in summaries)
+                    {
+                        await _unitOfWork.UserAiSummaryRepository.DeleteAsync(summary.Id);
+                    }
+                    await _unitOfWork.SaveAsync();
+                    return true;
+                }
+                return false;
+            }
+
+            // 4. Delete user answers
+            foreach (var answer in userAnswers)
+            {
+                await _unitOfWork.UserAnswerRepository.DeleteAsync(answer.UserAnswerId);
+            }
+
+            // 5. Delete UserAiSummary associated with this user
+            var userSummaries = await _unitOfWork.UserAiSummaryRepository.GetAsync(s => s.UserId == userId);
+            foreach (var summary in userSummaries)
+            {
+                await _unitOfWork.UserAiSummaryRepository.DeleteAsync(summary.Id);
+            }
+
+            await _unitOfWork.SaveAsync();
+            return true;
+        }
+
         private class GeminiGuidedChatResponse
         {
             public string evaluation { get; set; } = string.Empty;
