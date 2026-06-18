@@ -1,4 +1,4 @@
-﻿using DataAccess.Entities;
+using DataAccess.Entities;
 
 namespace BusinessLogic.Interfaces
 {
@@ -8,5 +8,8 @@ namespace BusinessLogic.Interfaces
         Task<UserAnswer?> GetByIdAsync(Guid id);
         Task<UserAnswer> CreateAsync(UserAnswer model);
         Task<bool> DeleteAsync(Guid id);
+        Task<IEnumerable<UserAnswer>> GetByUserIdAsync(Guid userId);
+        Task<bool> DeleteByUserIdAsync(Guid userId);
+        Task<UserAnswer> UpdateAsync(Guid userId, Guid questionId, string newAnswer);
     }
 }

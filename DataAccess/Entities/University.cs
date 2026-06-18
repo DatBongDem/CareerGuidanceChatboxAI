@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace DataAccess.Entities
 {
@@ -13,5 +14,9 @@ namespace DataAccess.Entities
         public string Location { get; set; }
         public double Ranking { get; set; }
         public string? Avatar { get; set; }
+
+        [JsonIgnore]
+        public ICollection<UniversityMajor>? UniversityMajors { get; set; }
+
     }
 }

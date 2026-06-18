@@ -40,6 +40,16 @@ namespace DataAccess.DataContext
         public DbSet<Major> Majors { get; set; }
         public DbSet<Recommendation> Recommendations { get; set; }
         public DbSet<UserAnswer> UserAnswers { get; set; }
+        public DbSet<AiEvaluation> AiEvaluations { get; set; }
+        public DbSet<UserAiSummary> UserAiSummaries { get; set; }
+
+        public DbSet<Skill> Skills { get; set; }
+        public DbSet<MajorSkill> MajorSkills { get; set; }
+
+        public DbSet<UniversityMajor> UniversityMajors { get; set; }
+
+        public DbSet<AdmissionMethod> AdmissionMethods { get; set; }
+        public DbSet<UniversityMajorMethod> UniversityMajorMethods { get; set; }
 
 
 
@@ -121,6 +131,15 @@ namespace DataAccess.DataContext
                 entity.Property(e => e.TemporaryUserData)
                     .HasColumnName("TemporaryUserData");
             });
+
+            modelBuilder.Entity<AiEvaluation>()
+                .HasOne(ae => ae.Category)
+                .WithMany()
+                .HasForeignKey(ae => ae.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            
+            
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +13,8 @@ namespace DataAccess.Entities.ChatAI
         public string Name { get; set; } = string.Empty;
 
         public int DisplayOrder { get; set; }
+
+        public bool IsChatAi { get; set; } = false;
 
         public ICollection<Question> Questions { get; set; }
             = new List<Question>();

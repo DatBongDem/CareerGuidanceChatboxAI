@@ -1,11 +1,15 @@
-﻿using BusinessLogic.Interfaces;
+using BusinessLogic.Interfaces;
 using DataAccess.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using BusinessLogic.DTOs.ChatAI.UserAnswer;
 
 namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UserAnswersController : ControllerBase
     {
         private readonly IUserAnswerService _service;
@@ -18,7 +22,14 @@ namespace WebAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var data = await _service.GetAllAsync();
+            var userIdClaim = User.FindFirst("UserId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new { success = false, message = "User is not logged in." });
+            }
+            var userId = Guid.Parse(userIdClaim);
+
+            var data = await _service.GetByUserIdAsync(userId);
 
             return Ok(new
             {
@@ -29,35 +40,96 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(UserAnswer model)
+        public async Task<IActionResult> Create(CreateUserAnswerDto dto)
         {
-            var result = await _service.CreateAsync(model);
-
-            return StatusCode(201, new
+            var userIdClaim = User.FindFirst("UserId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
             {
-                success = true,
-                message = "Created",
-                data = result
-            });
+                return Unauthorized(new { success = false, message = "User is not logged in." });
+            }
+            var userId = Guid.Parse(userIdClaim);
+
+            var model = new UserAnswer
+            {
+                UserId = userId,
+                QuestionId = dto.QuestionId,
+                Answer = dto.Answer
+            };
+
+            try
+            {
+                var result = await _service.CreateAsync(model);
+                return StatusCode(201, new
+                {
+                    success = true,
+                    message = "Created",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
+        [HttpDelete]
+        public async Task<IActionResult> Delete()
         {
-            var success = await _service.DeleteAsync(id);
+            var userIdClaim = User.FindFirst("UserId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new { success = false, message = "User is not logged in." });
+            }
+            var userId = Guid.Parse(userIdClaim);
+
+            var success = await _service.DeleteByUserIdAsync(userId);
 
             if (!success)
                 return NotFound(new
                 {
                     success = false,
-                    message = "Not found"
+                    message = "No answers found to delete"
                 });
 
             return Ok(new
             {
                 success = true,
-                message = "Deleted"
+                message = "Deleted all user answers successfully"
             });
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> Update(UpdateUserAnswerDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new { success = false, message = "User is not logged in." });
+            }
+            var userId = Guid.Parse(userIdClaim);
+
+            try
+            {
+                var result = await _service.UpdateAsync(userId, dto.QuestionId, dto.Answer);
+                return Ok(new
+                {
+                    success = true,
+                    message = "Updated successfully",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
         }
     }
 }

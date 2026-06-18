@@ -2,56 +2,53 @@
 using DataAccess.Entities;
 using Microsoft.AspNetCore.Mvc;
 
-namespace WebAPI.Controllers
+namespace API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class UniversitiesController : ControllerBase
+    [Route("api/university")]
+    public class UniversityController : ControllerBase
     {
         private readonly IUniversityService _service;
 
-        public UniversitiesController(IUniversityService service)
+        public UniversityController(IUniversityService service)
         {
             _service = service;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            string search = "",
+            int page = 1,
+            int pageSize = 10)
         {
-            return Ok(await _service.GetAllAsync());
+            return Ok(await _service.GetAll(search, page, pageSize));
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
-            var data = await _service.GetByIdAsync(id);
-            if (data == null) return NotFound();
-
-            return Ok(data);
+            return Ok(await _service.GetById(id));
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(University model)
+        public async Task<IActionResult> Create([FromBody] University entity)
         {
-            var result = await _service.CreateAsync(model);
-            return CreatedAtAction(nameof(GetById), new { id = result.UniversityId }, result);
+            await _service.Create(entity);
+            return Ok();
         }
 
         [HttpPut]
-        public async Task<IActionResult> Update([FromBody] University model)
+        public async Task<IActionResult> Update([FromBody] University entity)
         {
-            var success = await _service.UpdateAsync(model.UniversityId, model);
-
-            if (!success) return NotFound();
-
+            await _service.Update(entity);
             return Ok();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            await _service.DeleteAsync(id);
-            return NoContent();
+            await _service.Delete(id);
+            return Ok();
         }
     }
 }

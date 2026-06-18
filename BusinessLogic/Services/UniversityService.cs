@@ -13,49 +13,43 @@ namespace BusinessLogic.Services
             _uow = uow;
         }
 
-        public async Task<IEnumerable<University>> GetAllAsync()
+        public async Task<object> GetAll(string search, int page = 1, int pageSize = 10)
         {
-            return await _uow.Universities.GetAllAsync();
+            var (data, total) = await _uow.UniversityRepository
+                .GetPagedAsync(search, page, pageSize);
+
+            return new
+            {
+                total,
+                page,
+                pageSize,
+                data
+            };
         }
 
-        public async Task<University?> GetByIdAsync(Guid id)
+        public async Task<University?> GetById(Guid id)
         {
-            return await _uow.Universities.GetByIdAsync(id);
+            return await _uow.UniversityRepository.GetByIdAsync(id);
         }
 
-        public async Task<University> CreateAsync(University model)
+        public async Task Create(University entity)
         {
-            model.UniversityId = Guid.NewGuid();
+            entity.UniversityId = Guid.NewGuid();
 
-            await _uow.Universities.AddAsync(model);
+            await _uow.UniversityRepository.AddAsync(entity);
             await _uow.SaveAsync();
-
-            return model;
         }
 
-        public async Task<bool> UpdateAsync(Guid id, University model)
+        public async Task Update(University entity)
         {
-            var existing = await _uow.Universities.GetByIdAsync(id);
-            if (existing == null) return false;
-
-            existing.Name = model.Name;
-            existing.ShortName = model.ShortName;
-            existing.Location = model.Location;
-            existing.Ranking = model.Ranking;
-            existing.Avatar = model.Avatar;
-
-            await _uow.Universities.UpdateAsync(existing);
+            await _uow.UniversityRepository.UpdateAsync(entity);
             await _uow.SaveAsync();
-
-            return true;
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
+        public async Task Delete(Guid id)
         {
-            await _uow.Universities.DeleteAsync(id);
+            await _uow.UniversityRepository.DeleteAsync(id);
             await _uow.SaveAsync();
-
-            return true;
         }
     }
 }

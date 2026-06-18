@@ -22,11 +22,271 @@ namespace DataAccess.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("DataAccess.Entities.AdmissionMethod", b =>
+                {
+                    b.Property<Guid>("MethodId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("MethodId");
+
+                    b.ToTable("AdmissionMethods");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.AiEvaluation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EvaluationText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("AiEvaluations");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.ChatHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ChatHistories");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.Question", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AllowCustomAnswer")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IsActice")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("Questions");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.QuestionCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsChatAi")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("QuestionCategories");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.QuestionOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OptionCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ScoreTag")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.ToTable("QuestionOptions");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.UserAiSummary", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Next5Recommendations")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SummaryText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Top3Recommendations")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserAiSummaries");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.EmailVerification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("Id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreatedAt");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("Email");
+
+                    b.Property<DateTime>("ExpiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ExpiredAt");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsUsed");
+
+                    b.Property<string>("Otp")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("Otp");
+
+                    b.Property<string>("TemporaryUserData")
+                        .HasColumnType("text")
+                        .HasColumnName("TemporaryUserData");
+
+                    b.Property<string>("VerifyToken")
+                        .HasColumnType("text")
+                        .HasColumnName("VerifyToken");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailVerifications", (string)null);
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.PaymentTransaction", b =>
+                {
+                    b.Property<Guid>("TransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TransactionCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TransactionId");
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PaymentTransactions");
+                });
+
             modelBuilder.Entity("DataAccess.Entities.Plan", b =>
                 {
                     b.Property<Guid>("PlanId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("DurationInMonths")
                         .HasColumnType("integer");
@@ -41,6 +301,76 @@ namespace DataAccess.Migrations
                     b.HasKey("PlanId");
 
                     b.ToTable("Plans");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.PlanHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PlanHistories");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("RefreshTokenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeviceInfo")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("RefreshTokenId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.Role", b =>
@@ -60,6 +390,116 @@ namespace DataAccess.Migrations
                     b.HasKey("RoleId");
 
                     b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.University", b =>
+                {
+                    b.Property<Guid>("UniversityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Avatar")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("Ranking")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("UniversityId");
+
+                    b.ToTable("Universities");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.UniversityMajor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double?>("CutoffScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("DegreeType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DurationYears")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Language")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("MajorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Quota")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("Tuition")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("UniversityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MajorId");
+
+                    b.HasIndex("UniversityId");
+
+                    b.ToTable("UniversityMajors");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.UniversityMajorMethod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MajorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MethodId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UniversityId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MajorId");
+
+                    b.HasIndex("MethodId");
+
+                    b.HasIndex("UniversityId");
+
+                    b.ToTable("UniversityMajorMethods");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.User", b =>
@@ -82,10 +522,11 @@ namespace DataAccess.Migrations
                     b.Property<DateTime>("DOB")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("DatePlanRegistration")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Gender")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -103,14 +544,8 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("PlanId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Token")
-                        .HasColumnType("text");
 
                     b.Property<DateTime>("UpdateAt")
                         .HasColumnType("timestamp with time zone");
@@ -124,38 +559,323 @@ namespace DataAccess.Migrations
 
                     b.HasKey("UserId");
 
-                    b.HasIndex("PlanId");
-
                     b.HasIndex("RoleId");
 
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("DataAccess.Entities.User", b =>
+            modelBuilder.Entity("DataAccess.Entities.UserAnswer", b =>
+                {
+                    b.Property<Guid>("UserAnswerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserAnswerId");
+
+                    b.ToTable("UserAnswers");
+                });
+
+            modelBuilder.Entity("Major", b =>
+                {
+                    b.Property<Guid>("MajorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.HasKey("MajorId");
+
+                    b.ToTable("Majors");
+                });
+
+            modelBuilder.Entity("MajorSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MajorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Weight")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MajorSkills");
+                });
+
+            modelBuilder.Entity("Recommendation", b =>
+                {
+                    b.Property<Guid>("RecommendationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MajorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("MatchScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.HasKey("RecommendationId");
+
+                    b.ToTable("Recommendations");
+                });
+
+            modelBuilder.Entity("Skill", b =>
+                {
+                    b.Property<Guid>("SkillId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.HasKey("SkillId");
+
+                    b.ToTable("Skills");
+                });
+
+            modelBuilder.Entity("UserProfile", b =>
+                {
+                    b.Property<Guid>("ProfileId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CareerGoals")
+                        .HasColumnType("text");
+
+                    b.Property<double>("GPA")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Interests")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Personality")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StrengthSubjects")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ProfileId");
+
+                    b.ToTable("UserProfiles");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.AiEvaluation", b =>
+                {
+                    b.HasOne("DataAccess.Entities.ChatAI.QuestionCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.Question", b =>
+                {
+                    b.HasOne("DataAccess.Entities.ChatAI.QuestionCategory", "Category")
+                        .WithMany("Questions")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.QuestionOption", b =>
+                {
+                    b.HasOne("DataAccess.Entities.ChatAI.Question", "Question")
+                        .WithMany("Options")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.PaymentTransaction", b =>
                 {
                     b.HasOne("DataAccess.Entities.Plan", "Plan")
-                        .WithMany("Users")
-                        .HasForeignKey("PlanId");
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasOne("DataAccess.Entities.Role", "Role")
-                        .WithMany("Users")
-                        .HasForeignKey("RoleId")
+                    b.HasOne("DataAccess.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Plan");
 
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.PlanHistory", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Plan", "Plan")
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.PaymentTransaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.User", "User")
+                        .WithMany("PlanHistories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
+
+                    b.Navigation("Transaction");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("DataAccess.Entities.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.UniversityMajor", b =>
+                {
+                    b.HasOne("Major", "Major")
+                        .WithMany("UniversityMajors")
+                        .HasForeignKey("MajorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.University", "University")
+                        .WithMany("UniversityMajors")
+                        .HasForeignKey("UniversityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Major");
+
+                    b.Navigation("University");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.UniversityMajorMethod", b =>
+                {
+                    b.HasOne("Major", "Major")
+                        .WithMany()
+                        .HasForeignKey("MajorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.AdmissionMethod", "AdmissionMethod")
+                        .WithMany("UniversityMajorMethods")
+                        .HasForeignKey("MethodId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.University", "University")
+                        .WithMany()
+                        .HasForeignKey("UniversityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AdmissionMethod");
+
+                    b.Navigation("Major");
+
+                    b.Navigation("University");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.User", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Role", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("DataAccess.Entities.Plan", b =>
+            modelBuilder.Entity("DataAccess.Entities.AdmissionMethod", b =>
                 {
-                    b.Navigation("Users");
+                    b.Navigation("UniversityMajorMethods");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.Question", b =>
+                {
+                    b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.ChatAI.QuestionCategory", b =>
+                {
+                    b.Navigation("Questions");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.University", b =>
+                {
+                    b.Navigation("UniversityMajors");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.User", b =>
+                {
+                    b.Navigation("PlanHistories");
+
+                    b.Navigation("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Major", b =>
+                {
+                    b.Navigation("UniversityMajors");
                 });
 #pragma warning restore 612, 618
         }
