@@ -31,6 +31,7 @@ namespace BusinessLogic.Services
 
             using var smtp = new SmtpClient();
             smtp.Timeout = 10000; // 10 seconds timeout to prevent hanging on Render's 30s limit
+            smtp.ServerCertificateValidationCallback = (s, c, h, e) => true; // Bypass certificate validation when connecting via resolved IP
 
             string smtpHost = _emailSettings.SmtpServer;
             try
