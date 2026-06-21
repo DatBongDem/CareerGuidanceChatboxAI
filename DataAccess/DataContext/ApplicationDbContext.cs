@@ -54,7 +54,8 @@ namespace DataAccess.DataContext
         public DbSet<AdmissionMethod> AdmissionMethods { get; set; }
         public DbSet<UniversityMajorMethod> UniversityMajorMethods { get; set; }
 
-
+        public DbSet<EduRegistration> EduRegistrations { get; set; }
+        public DbSet<EduActivationKey> EduActivationKeys { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -158,6 +159,27 @@ namespace DataAccess.DataContext
                 .WithMany()
                 .HasForeignKey(s => s.SessionId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // =========================
+            // EduRegistration & EduActivationKey
+            // =========================
+            modelBuilder.Entity<EduRegistration>()
+                .HasOne(er => er.Plan)
+                .WithMany()
+                .HasForeignKey(er => er.PlanId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EduActivationKey>()
+                .HasOne(eak => eak.Registration)
+                .WithMany()
+                .HasForeignKey(eak => eak.RegistrationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EduActivationKey>()
+                .HasOne(eak => eak.UsedByUser)
+                .WithMany()
+                .HasForeignKey(eak => eak.UsedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
