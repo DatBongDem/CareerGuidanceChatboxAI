@@ -125,7 +125,8 @@ namespace BusinessLogic.Services
                     Evaluation = "",
                     Message = "Xin chào! Tôi là Trợ lý Hướng nghiệp AI. Hãy chia sẻ để tôi có thể tìm ngành học và trường đại học phù hợp nhất với bạn nhé!",
                     HasEnoughInfo = false,
-                    Summary = null
+                    Summary = null,
+                    NextQuestionContent = chatQuestions.First().Content
                 };
             }
 
@@ -288,7 +289,8 @@ Trả về kết quả dưới dạng JSON có cấu trúc như sau:
                     Evaluation = parsedResult?.evaluation ?? string.Empty,
                     Message = parsedResult?.message ?? string.Empty,
                     HasEnoughInfo = true,
-                    Summary = finalSummaryDto
+                    Summary = finalSummaryDto,
+                    NextQuestionContent = null
                 };
             }
 
@@ -313,18 +315,22 @@ Trả về kết quả dưới dạng JSON có cấu trúc như sau:
             var answeredQuestions = chatQuestions.Where(q => userAnswers.Any(a => a.QuestionId == q.Id)).ToList();
             if (answeredQuestions.Any())
             {
-                historySbContext.AppendLine("Lịch sử trò chuyện trước đó:");
+                historySbContext.AppendLine("Lịch sử trò chuyện và đánh giá trước đó:");
                 foreach (var q in answeredQuestions)
                 {
                     var ans = userAnswers.FirstOrDefault(a => a.QuestionId == q.Id);
-                    historySbContext.AppendLine($"AI hỏi: {q.Content}");
-                    historySbContext.AppendLine($"Người dùng trả lời: {ans?.Answer}");
+                    historySbContext.AppendLine($"- AI hỏi: {q.Content}");
+                    historySbContext.AppendLine($"  Người dùng trả lời: {ans?.Answer}");
+                    if (!string.IsNullOrEmpty(ans?.Evaluation))
+                    {
+                        historySbContext.AppendLine($"  Đánh giá của AI cho câu trả lời này: {ans.Evaluation}");
+                    }
                 }
             }
 
             var guidedPrompt = $@"
 Bạn là một chuyên gia tư vấn hướng nghiệp AI thân thiện. 
-Nhiệm vụ của bạn là dẫn dắt cuộc trò chuyện và đặt câu hỏi tiếp theo: ""{nextQuestion.Content}""
+Nhiệm vụ của bạn là dẫn dắt cuộc trò chuyện một cách tự nhiên và đặt câu hỏi tiếp theo: ""{nextQuestion.Content}""
 
 {historySbContext.ToString()}
 
@@ -334,14 +340,16 @@ Câu trả lời của người dùng: ""{lastAnswer}""
 Danh sách các trường đại học:
 {uniListSbContext.ToString()}
 
-Quy tắc đánh giá thông tin:
-1. Đặt ""hasEnoughInfo"" thành true và cung cấp đề xuất sơ bộ trong ""summary"" (dù tỉ lệ % phù hợp có thể thấp từ 30% - 50%) ngay khi câu trả lời của người dùng chứa bất kỳ thông tin cụ thể hữu ích nào về sở thích, môn học thế mạnh, tính cách, kỹ năng, hoặc định hướng nghề nghiệp (ví dụ: ""tôi thích toán"", ""tôi thích vẽ"", ""tôi thích làm lập trình viên"", ""tôi muốn làm việc năng động"").
-2. Đặt ""hasEnoughInfo"" thành false và ""summary"" thành null nếu người dùng chưa cung cấp bất kỳ thông tin hữu ích nào (ví dụ: chỉ chào hỏi xã giao như ""Chào AI"", ""Hi"", ""Hello"", hoặc câu trả lời không mang tính thông tin định hướng nào).
+Quy tắc trò chuyện và đánh giá:
+1. Bạn phải đọc kỹ lịch sử trò chuyện và các đánh giá trước đó (nếu có) trong phần ngữ cảnh để hiểu rõ tính cách, năng lực và sở thích của người dùng.
+2. Lời thoại dẫn dắt (trường ""message"") phải liên kết một cách mượt mà và thông minh với câu trả lời vừa rồi của người dùng và bối cảnh trước đó. Tuyệt đối không được đưa ra phản hồi gượng gạo, rập khuôn hoặc chuyển chủ đề một cách đột ngột.
+3. Đặt ""hasEnoughInfo"" thành true và cung cấp đề xuất sơ bộ trong ""summary"" (dù tỉ lệ % phù hợp có thể thấp từ 30% - 50%) ngay khi câu trả lời của người dùng chứa bất kỳ thông tin cụ thể hữu ích nào về sở thích, môn học thế mạnh, tính cách, kỹ năng, hoặc định hướng nghề nghiệp.
+4. Đặt ""hasEnoughInfo"" thành false và ""summary"" thành null nếu người dùng chưa cung cấp bất kỳ thông tin cụ thể nào hỗ trợ định hướng nghề nghiệp (ví dụ: mới chỉ chào hỏi xã giao hoặc câu trả lời không mang tính thông tin định hướng nào).
 
 Trả về dạng JSON:
 {{
-  ""evaluation"": ""Đánh giá câu trả lời vừa rồi"",
-  ""message"": ""Lời thoại dẫn dắt và câu hỏi tiếp theo"",
+  ""evaluation"": ""Đánh giá ngắn gọn, sâu sắc về câu trả lời vừa rồi"",
+  ""message"": ""Lời thoại dẫn dắt mượt mà kết nối lịch sử và câu hỏi tiếp theo"",
   ""hasEnoughInfo"": true/false,
   ""summary"": null hoặc {{
      ""summaryText"": ""Nhận xét tổng quan..."",
@@ -422,7 +430,8 @@ Trả về dạng JSON:
                 Evaluation = parsedGuidedResult?.evaluation ?? string.Empty,
                 Message = parsedGuidedResult?.message ?? string.Empty,
                 HasEnoughInfo = enoughInfo,
-                Summary = summaryDto
+                Summary = summaryDto,
+                NextQuestionContent = nextQuestion?.Content
             };
         }
 
@@ -541,6 +550,21 @@ Trả về dạng JSON:
                 AnsweredAt = a.AnsweredAt
             }).ToList();
 
+            string? nextQuestionContent = null;
+            var chatCategory = (await _unitOfWork.QuestionCategoryRepository.GetAsync(c => c.IsChatAi)).FirstOrDefault();
+            if (chatCategory != null)
+            {
+                var chatQuestions = (await _unitOfWork.QuestionRepository.GetAsync(
+                    q => q.CategoryId == chatCategory.Id && q.IsActice == StatusEnum.Yes
+                )).OrderBy(q => q.DisplayOrder).ToList();
+
+                var nextQuestion = chatQuestions.FirstOrDefault(q => !answers.Any(a => a.QuestionId == q.Id));
+                if (nextQuestion != null)
+                {
+                    nextQuestionContent = nextQuestion.Content;
+                }
+            }
+
             return new ChatAiSessionDetailDto
             {
                 Id = session.Id,
@@ -548,7 +572,8 @@ Trả về dạng JSON:
                 CreatedAt = session.CreatedAt,
                 UpdatedAt = session.UpdatedAt,
                 Summary = summaryDto,
-                ChatHistory = chatHistory
+                ChatHistory = chatHistory,
+                NextQuestionContent = nextQuestionContent
             };
         }
 
