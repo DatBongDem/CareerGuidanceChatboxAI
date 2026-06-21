@@ -1,11 +1,8 @@
 using BusinessLogic.DTOs.Email;
 using BusinessLogic.Interfaces;
-using MailKit.Net.Smtp;
-using MailKit.Security;
 using Microsoft.Extensions.Options;
-using MimeKit;
-using System;
-using System.Net;
+using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Services
@@ -13,50 +10,48 @@ namespace BusinessLogic.Services
     public class EmailService : IEmailService
     {
         private readonly EmailSettings _emailSettings;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public EmailService(IOptions<EmailSettings> emailSettings)
+        public EmailService(IOptions<EmailSettings> emailSettings, IHttpClientFactory httpClientFactory)
         {
             _emailSettings = emailSettings.Value;
+            _httpClientFactory = httpClientFactory;
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string message)
         {
-            var email = new MimeMessage();
-            email.From.Add(new MailboxAddress("4sCompany", _emailSettings.SenderEmail));
-            email.To.Add(MailboxAddress.Parse(toEmail));
-            email.Subject = subject;
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("api-key", _emailSettings.AppPassword);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            var builder = new BodyBuilder();
-            builder.HtmlBody = message;
-            email.Body = builder.ToMessageBody();
-
-            using var smtp = new SmtpClient();
-            smtp.Timeout = 10000; // 10 seconds timeout to prevent hanging on Render's 30s limit
-            smtp.ServerCertificateValidationCallback = (s, c, h, e) => true; // Bypass certificate validation when connecting via resolved IP
-
-            string smtpHost = _emailSettings.SmtpServer;
-            try
+            var payload = new
             {
-                // Resolve hostname to IPv4 to bypass Render's IPv6 resolution routing bugs
-                var addresses = await Dns.GetHostAddressesAsync(smtpHost);
-                foreach (var address in addresses)
+                sender = new
                 {
-                    if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    name = "4sCompany",
+                    email = _emailSettings.SenderEmail
+                },
+                to = new[]
+                {
+                    new
                     {
-                        smtpHost = address.ToString();
-                        break;
+                        email = toEmail
                     }
-                }
-            }
-            catch
-            {
-                // Fallback to configuration value if DNS resolution fails
-            }
+                },
+                subject = subject,
+                htmlContent = message
+            };
 
-            await smtp.ConnectAsync(smtpHost, _emailSettings.Port, SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync(_emailSettings.Username, _emailSettings.AppPassword);
-            await smtp.SendAsync(email);
-            await smtp.DisconnectAsync(true);
+            var json = JsonSerializer.Serialize(payload);
+            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorDetail = await response.Content.ReadAsStringAsync();
+                throw new System.Exception($"Failed to send email via Brevo API. Status: {response.StatusCode}, Details: {errorDetail}");
+            }
         }
     }
 }
