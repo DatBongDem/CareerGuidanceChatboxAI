@@ -243,22 +243,10 @@ namespace BusinessLogic.Services
                         request.Email,
                         otp);
 
-            // Send email in a background task to prevent blocking the HTTP response and causing Render timeouts
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _emailService.SendEmailAsync(
-                        request.Email,
-                        subject,
-                        message);
-                }
-                catch (Exception ex)
-                {
-                    // Log error if needed, but do not throw to crash the process
-                    Console.WriteLine($"[Email Service Error] Failed to send registration OTP email to {request.Email}: {ex.Message}");
-                }
-            });
+            await _emailService.SendEmailAsync(
+                request.Email,
+                subject,
+                message);
 
             return true;
         }
@@ -439,22 +427,10 @@ namespace BusinessLogic.Services
                         dto.Email,
                         otp);
 
-            // Send email in a background task to prevent blocking the HTTP response and causing Render timeouts
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _emailService.SendEmailAsync(
-                        dto.Email,
-                        subject,
-                        message);
-                }
-                catch (Exception ex)
-                {
-                    // Log error if needed, but do not throw to crash the process
-                    Console.WriteLine($"[Email Service Error] Failed to send forgot password OTP email to {dto.Email}: {ex.Message}");
-                }
-            });
+            await _emailService.SendEmailAsync(
+                dto.Email,
+                subject,
+                message);
         }
 
         // ========================= RESET PASSWORD =========================
