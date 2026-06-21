@@ -3,6 +3,7 @@ using System;
 using DataAccess.DataContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260621044019_AddChatAiSessionAndAnswer")]
+    partial class AddChatAiSessionAndAnswer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -103,8 +106,19 @@ namespace DataAccess.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
+                    b.Property<bool>("HasEnoughInfo")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Next5Recommendations")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SummaryText")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Top3Recommendations")
                         .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -116,36 +130,6 @@ namespace DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ChatAiSessions");
-                });
-
-            modelBuilder.Entity("DataAccess.Entities.ChatAI.ChatAiSummary", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Recommendations")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("SummaryText")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SessionId");
-
-                    b.ToTable("ChatAiSummaries");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.ChatAI.ChatHistory", b =>
@@ -805,17 +789,6 @@ namespace DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("Question");
-
-                    b.Navigation("Session");
-                });
-
-            modelBuilder.Entity("DataAccess.Entities.ChatAI.ChatAiSummary", b =>
-                {
-                    b.HasOne("DataAccess.Entities.ChatAI.ChatAiSession", "Session")
-                        .WithMany()
-                        .HasForeignKey("SessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("Session");
                 });

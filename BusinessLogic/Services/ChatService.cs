@@ -63,7 +63,7 @@ namespace BusinessLogic.Services
             return answer;
         }
 
-        public async Task<GuidedChatResponse> ContinueGuidedChatAsync(Guid userId, string? userMessage)
+        public async Task<GuidedChatResponse> ContinueGuidedChatAsync(Guid userId, Guid? sessionId, string? userMessage)
         {
             // 1. Get Chat AI category
             var chatCategory = (await _unitOfWork.QuestionCategoryRepository.GetAsync(c => c.IsChatAi)).FirstOrDefault();
@@ -72,7 +72,6 @@ namespace BusinessLogic.Services
                 return new GuidedChatResponse
                 {
                     Message = "Hệ thống chưa thiết lập chuyên mục câu hỏi Chat AI. Vui lòng liên hệ Admin.",
-                    IsCompleted = false
                 };
             }
 
@@ -86,231 +85,355 @@ namespace BusinessLogic.Services
                 return new GuidedChatResponse
                 {
                     Message = "Chuyên mục Chat AI chưa có câu hỏi nào hoạt động.",
-                    IsCompleted = false
                 };
             }
 
-            // 3. Load user answers for these questions
-            var questionIds = chatQuestions.Select(q => q.Id).ToList();
-            var userAnswers = (await _unitOfWork.UserAnswerRepository.GetAsync(
-                a => a.UserId == userId && questionIds.Contains(a.QuestionId)
+            // 3. Retrieve or create Session
+            ChatAiSession? session = null;
+            if (sessionId.HasValue && sessionId.Value != Guid.Empty)
+            {
+                session = await _unitOfWork.ChatAiSessionRepository.GetByIdAsync(sessionId.Value);
+            }
+
+            if (session == null || session.UserId != userId)
+            {
+                var sessionCount = (await _unitOfWork.ChatAiSessionRepository.GetAsync(s => s.UserId == userId)).Count();
+                session = new ChatAiSession
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Name = $"Phiên chat {sessionCount + 1}",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.ChatAiSessionRepository.AddAsync(session);
+                await _unitOfWork.SaveAsync();
+
+            }
+
+            // 4. Load session answers
+            var userAnswers = (await _unitOfWork.ChatAiAnswerRepository.GetAsync(
+                a => a.SessionId == session.Id
             )).ToList();
 
-            // 4. If this is the start of the chat (no answers yet and no message sent)
+            // 5. If this is the start of the chat in this session and user message is empty
             if (userAnswers.Count == 0 && string.IsNullOrWhiteSpace(userMessage))
             {
-                var currentQuestion = chatQuestions.First();
-                var startPrompt = $@"
-Bạn là một chuyên gia tư vấn hướng nghiệp AI thân thiện.
-Hãy bắt đầu cuộc trò chuyện bằng tiếng Việt một cách tự nhiên, chào mừng người dùng và đưa ra câu hỏi đầu tiên dưới đây để họ trả lời:
-""{currentQuestion.Content}""
-";
-                var startMessage = await CallGeminiSimpleAsync(startPrompt);
                 return new GuidedChatResponse
                 {
+                    SessionId = session.Id,
                     Evaluation = "",
-                    Message = startMessage,
-                    IsCompleted = false,
-                    HasEnoughInfo = false
+                    Message = "Xin chào! Tôi là Trợ lý Hướng nghiệp AI. Hãy chia sẻ để tôi có thể tìm ngành học và trường đại học phù hợp nhất với bạn nhé!",
+                    HasEnoughInfo = false,
+                    Summary = null
                 };
             }
 
-            // Otherwise, we process the user's message
-            // Find the current unanswered question
+            // Otherwise, process user message
             var activeQuestion = chatQuestions.FirstOrDefault(q => !userAnswers.Any(a => a.QuestionId == q.Id));
 
             if (activeQuestion != null && !string.IsNullOrWhiteSpace(userMessage))
             {
-                // Double check if answer already exists to prevent duplicate
-                var existing = await _unitOfWork.UserAnswerRepository.GetAsync(a => a.UserId == userId && a.QuestionId == activeQuestion.Id);
+                var existing = await _unitOfWork.ChatAiAnswerRepository.GetAsync(
+                    a => a.SessionId == session.Id && a.QuestionId == activeQuestion.Id
+                );
                 if (!existing.Any())
                 {
-                    var newAnswer = new UserAnswer
+                    var newAnswer = new ChatAiAnswer
                     {
-                        UserAnswerId = Guid.NewGuid(),
-                        UserId = userId,
+                        Id = Guid.NewGuid(),
+                        SessionId = session.Id,
                         QuestionId = activeQuestion.Id,
                         Answer = userMessage,
                         AnsweredAt = DateTime.UtcNow
                     };
-                    await _unitOfWork.UserAnswerRepository.AddAsync(newAnswer);
+                    await _unitOfWork.ChatAiAnswerRepository.AddAsync(newAnswer);
                     await _unitOfWork.SaveAsync();
 
-                    // Update local lists
                     userAnswers.Add(newAnswer);
                 }
             }
 
-            // Find the question they just answered
+            // Find last answered question
             var lastAnsweredQuestion = chatQuestions
                 .Where(q => userAnswers.Any(a => a.QuestionId == q.Id))
                 .OrderBy(q => q.DisplayOrder)
                 .LastOrDefault();
-            var lastAnswer = userAnswers.FirstOrDefault(a => a.QuestionId == lastAnsweredQuestion?.Id)?.Answer;
+            var lastAnswerEntity = userAnswers.FirstOrDefault(a => a.QuestionId == lastAnsweredQuestion?.Id);
+            var lastAnswer = lastAnswerEntity?.Answer;
 
-            // Determine the next question
+            // Determine next question
             var nextQuestion = chatQuestions.FirstOrDefault(q => !userAnswers.Any(a => a.QuestionId == q.Id));
 
-            // 5. If all questions are answered, generate summary and return completed response
+            // 6. If all questions answered, generate overall summary and complete session
             if (nextQuestion == null)
             {
-                // Evaluate UserAiSummary
-                var summary = await _userAiSummaryService.EvaluateChatAiOverallAsync(userId);
+                var universities = (await _unitOfWork.UniversityRepository.GetAsync()).ToList();
+                var universityMajors = (await _unitOfWork.UniversityMajorRepository.GetAsync()).ToList();
+                var majors = (await _unitOfWork.MajorRepository.GetAsync()).ToList();
 
-                // Call Gemini to evaluate the last answer and say a warm ending message
+                var uniListSb = new StringBuilder();
+                foreach (var uni in universities)
+                {
+                    var uniMajorIds = universityMajors.Where(um => um.UniversityId == uni.UniversityId).Select(um => um.MajorId).ToList();
+                    var uniMajors = majors.Where(m => uniMajorIds.Contains(m.MajorId)).ToList();
+                    var majorStrings = uniMajors.Select(m => $"[ID Ngành: {m.MajorId}] {m.Name ?? "Chưa đặt tên"}").ToList();
+                    var majorListStr = majorStrings.Any() ? string.Join(", ", majorStrings) : "Không có ngành học nào được đăng ký";
+
+                    uniListSb.AppendLine($"- [ID Trường: {uni.UniversityId}] Tên: {uni.Name} ({uni.ShortName}), Địa chỉ: {uni.Location}, Xếp hạng: {uni.Ranking}");
+                    uniListSb.AppendLine($"  Các ngành học đào tạo: {majorListStr}");
+                }
+
+                var historySb = new StringBuilder();
+                historySb.AppendLine($"Chuyên mục: {chatCategory.Name}");
+                for (int i = 0; i < chatQuestions.Count; i++)
+                {
+                    var q = chatQuestions[i];
+                    var ans = userAnswers.FirstOrDefault(a => a.QuestionId == q.Id);
+                    historySb.AppendLine($"  {i + 1}. Câu hỏi: {q.Content}");
+                    historySb.AppendLine($"     Câu trả lời: {ans?.Answer}");
+                }
+
                 var endingPrompt = $@"
 Bạn là một chuyên gia tư vấn tuyển sinh và định hướng nghề nghiệp AI thân thiện.
-Người dùng vừa hoàn thành câu hỏi cuối cùng của cuộc khảo sát.
-Câu hỏi vừa trả lời: ""{lastAnsweredQuestion?.Content}""
-Câu trả lời của người dùng: ""{lastAnswer}""
+Người dùng vừa hoàn thành câu hỏi cuối cùng của cuộc khảo sát Chat AI.
+Dữ liệu câu trả lời của người dùng:
+{historySb.ToString()}
+
+Danh sách các trường đại học hiện có và các ngành học đào tạo tương ứng trong hệ thống của chúng tôi:
+{uniListSb.ToString()}
 
 Nhiệm vụ của bạn là:
-1. Đưa ra một câu nhận xét, đánh giá ngắn gọn và có ích về câu trả lời cuối cùng này của người dùng (lưu vào trường 'evaluation'). Nhận xét khoảng 30-50 từ, không dùng ký tự định dạng markdown như *, -, #.
-2. Tạo một lời thoại kết thúc cuộc trò chuyện thật tự nhiên, thân thiện bằng tiếng Việt, chúc mừng họ đã hoàn thành toàn bộ cuộc khảo sát hướng nghiệp và thông báo rằng họ có thể xem kết quả tổng hợp chi tiết bên dưới (lưu vào trường 'message').
+1. Đưa ra một câu nhận xét, đánh giá ngắn gọn và có ích về câu trả lời cuối cùng này của người dùng (lưu vào trường 'evaluation').
+2. Tạo một lời thoại kết thúc cuộc trò chuyện thật tự nhiên, thân thiện bằng tiếng Việt.
+3. Từ danh sách các trường đại học được cung cấp ở trên, hãy chọn ra các trường đại học phù hợp nhất (lưu vào danh sách 'recommendations' thuộc 'summary').
 
 Trả về kết quả dưới dạng JSON có cấu trúc như sau:
 {{
-  ""evaluation"": ""Đánh giá của bạn về câu trả lời cuối cùng vừa rồi"",
-  ""message"": ""Lời thoại chúc mừng và kết thúc cuộc trò chuyện""
+  ""evaluation"": ""Đánh giá..."",
+  ""message"": ""Lời thoại chúc mừng..."",
+  ""summary"": {{
+     ""summaryText"": ""Nhận xét tổng quan..."",
+     ""recommendations"": [
+       {{ ""universityId"": ""id"", ""matchPercentage"": 85, ""majorIds"": [""id1""] }}
+     ]
+  }}
 }}
-Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON này.
 ";
                 var parsedResult = await CallGeminiJsonAsync<GeminiGuidedChatResponse>(endingPrompt);
 
+                if (lastAnswerEntity != null && parsedResult != null)
+                {
+                    lastAnswerEntity.Evaluation = parsedResult.evaluation ?? string.Empty;
+                    await _unitOfWork.ChatAiAnswerRepository.UpdateAsync(lastAnswerEntity);
+                }
+
+                ChatAiSummaryResponseDto? finalSummaryDto = null;
+                if (parsedResult?.summary != null)
+                {
+                    var recommendationsJson = JsonSerializer.Serialize(parsedResult.summary.recommendations);
+                    var existingSummary = (await _unitOfWork.ChatAiSummaryRepository.GetAsync(
+                        s => s.SessionId == session.Id
+                    )).FirstOrDefault();
+
+                    if (existingSummary != null)
+                    {
+                        existingSummary.SummaryText = parsedResult.summary.summaryText;
+                        existingSummary.Recommendations = recommendationsJson;
+                        existingSummary.UpdatedAt = DateTime.UtcNow;
+                        await _unitOfWork.ChatAiSummaryRepository.UpdateAsync(existingSummary);
+
+                        finalSummaryDto = MapToSummaryDto(
+                            session.Id,
+                            parsedResult.summary.summaryText,
+                            parsedResult.summary.recommendations,
+                            universities,
+                            majors
+                        );
+                        finalSummaryDto.Id = existingSummary.Id;
+                        finalSummaryDto.CreatedAt = existingSummary.CreatedAt;
+                    }
+                    else
+                    {
+                        var newSummary = new ChatAiSummary
+                        {
+                            Id = Guid.NewGuid(),
+                            SessionId = session.Id,
+                            SummaryText = parsedResult.summary.summaryText,
+                            Recommendations = recommendationsJson,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        await _unitOfWork.ChatAiSummaryRepository.AddAsync(newSummary);
+
+                        finalSummaryDto = MapToSummaryDto(
+                            session.Id,
+                            parsedResult.summary.summaryText,
+                            parsedResult.summary.recommendations,
+                            universities,
+                            majors
+                        );
+                        finalSummaryDto.Id = newSummary.Id;
+                        finalSummaryDto.CreatedAt = newSummary.CreatedAt;
+                    }
+                }
+
+                session.UpdatedAt = DateTime.UtcNow;
+                await _unitOfWork.ChatAiSessionRepository.UpdateAsync(session);
+                await _unitOfWork.SaveAsync();
+
                 return new GuidedChatResponse
                 {
+                    SessionId = session.Id,
                     Evaluation = parsedResult?.evaluation ?? string.Empty,
                     Message = parsedResult?.message ?? string.Empty,
-                    IsCompleted = true,
                     HasEnoughInfo = true,
-                    Summary = summary
+                    Summary = finalSummaryDto
                 };
             }
 
-            // Load all universities, majors and university-majors for prompt context
-            var universities = (await _unitOfWork.UniversityRepository.GetAsync()).ToList();
-            var universityMajors = (await _unitOfWork.UniversityMajorRepository.GetAsync()).ToList();
-            var majors = (await _unitOfWork.MajorRepository.GetAsync()).ToList();
+            // Load universities, majors for context
+            var universitiesList = (await _unitOfWork.UniversityRepository.GetAsync()).ToList();
+            var universityMajorsList = (await _unitOfWork.UniversityMajorRepository.GetAsync()).ToList();
+            var majorsList = (await _unitOfWork.MajorRepository.GetAsync()).ToList();
 
-            var uniListSb = new StringBuilder();
-            foreach (var uni in universities)
+            var uniListSbContext = new StringBuilder();
+            foreach (var uni in universitiesList)
             {
-                var uniMajorIds = universityMajors.Where(um => um.UniversityId == uni.UniversityId).Select(um => um.MajorId).ToList();
-                var uniMajors = majors.Where(m => uniMajorIds.Contains(m.MajorId)).ToList();
+                var uniMajorIds = universityMajorsList.Where(um => um.UniversityId == uni.UniversityId).Select(um => um.MajorId).ToList();
+                var uniMajors = majorsList.Where(m => uniMajorIds.Contains(m.MajorId)).ToList();
                 var majorStrings = uniMajors.Select(m => $"[ID Ngành: {m.MajorId}] {m.Name ?? "Chưa đặt tên"}").ToList();
                 var majorListStr = majorStrings.Any() ? string.Join(", ", majorStrings) : "Không có ngành học nào được đăng ký";
 
-                uniListSb.AppendLine($"- [ID Trường: {uni.UniversityId}] Tên: {uni.Name} ({uni.ShortName}), Địa chỉ: {uni.Location}, Xếp hạng: {uni.Ranking}");
-                uniListSb.AppendLine($"  Các ngành học đào tạo: {majorListStr}");
+                uniListSbContext.AppendLine($"- [ID Trường: {uni.UniversityId}] Tên: {uni.Name} ({uni.ShortName}), Địa chỉ: {uni.Location}, Xếp hạng: {uni.Ranking}");
+                uniListSbContext.AppendLine($"  Các ngành học đào tạo: {majorListStr}");
             }
 
-            // 6. Otherwise, ask the next question
-            // We want to ask nextQuestion, and evaluate the last answer
-            var historySb = new StringBuilder();
+            var historySbContext = new StringBuilder();
             var answeredQuestions = chatQuestions.Where(q => userAnswers.Any(a => a.QuestionId == q.Id)).ToList();
             if (answeredQuestions.Any())
             {
-                historySb.AppendLine("Lịch sử trò chuyện trước đó:");
+                historySbContext.AppendLine("Lịch sử trò chuyện trước đó:");
                 foreach (var q in answeredQuestions)
                 {
                     var ans = userAnswers.FirstOrDefault(a => a.QuestionId == q.Id);
-                    historySb.AppendLine($"AI hỏi: {q.Content}");
-                    historySb.AppendLine($"Người dùng trả lời: {ans?.Answer}");
+                    historySbContext.AppendLine($"AI hỏi: {q.Content}");
+                    historySbContext.AppendLine($"Người dùng trả lời: {ans?.Answer}");
                 }
             }
 
             var guidedPrompt = $@"
 Bạn là một chuyên gia tư vấn hướng nghiệp AI thân thiện. 
-Nhiệm vụ của bạn là dẫn dắt cuộc trò chuyện và đặt câu hỏi tiếp theo cho người dùng từ danh sách câu hỏi có sẵn.
+Nhiệm vụ của bạn là dẫn dắt cuộc trò chuyện và đặt câu hỏi tiếp theo: ""{nextQuestion.Content}""
 
-{historySb.ToString()}
+{historySbContext.ToString()}
 
 Câu hỏi vừa trả lời: ""{lastAnsweredQuestion?.Content}""
 Câu trả lời của người dùng: ""{lastAnswer}""
 
-Câu hỏi tiếp theo bạn CẦN hỏi: ""{nextQuestion.Content}""
+Danh sách các trường đại học:
+{uniListSbContext.ToString()}
 
-Danh sách các trường đại học hiện có và các ngành học đào tạo tương ứng trong hệ thống của chúng tôi:
-{uniListSb.ToString()}
+Quy tắc đánh giá thông tin:
+1. Đặt ""hasEnoughInfo"" thành true và cung cấp đề xuất sơ bộ trong ""summary"" (dù tỉ lệ % phù hợp có thể thấp từ 30% - 50%) ngay khi câu trả lời của người dùng chứa bất kỳ thông tin cụ thể hữu ích nào về sở thích, môn học thế mạnh, tính cách, kỹ năng, hoặc định hướng nghề nghiệp (ví dụ: ""tôi thích toán"", ""tôi thích vẽ"", ""tôi thích làm lập trình viên"", ""tôi muốn làm việc năng động"").
+2. Đặt ""hasEnoughInfo"" thành false và ""summary"" thành null nếu người dùng chưa cung cấp bất kỳ thông tin hữu ích nào (ví dụ: chỉ chào hỏi xã giao như ""Chào AI"", ""Hi"", ""Hello"", hoặc câu trả lời không mang tính thông tin định hướng nào).
 
-Hãy tạo một phản hồi tự nhiên bằng tiếng Việt và trả về dạng JSON:
-1. Đưa ra một câu nhận xét, đánh giá ngắn gọn và có ích về câu trả lời vừa rồi của người dùng đối với câu hỏi ""{lastAnsweredQuestion?.Content}"" (lưu vào trường 'evaluation'). Nhận xét khoảng 30-50 từ, không dùng ký tự markdown như *, -, #.
-2. Chuyển ý tự nhiên và đặt câu hỏi tiếp theo ở trên cho người dùng một cách duyên dáng (lưu vào trường 'message').
-3. Phân tích lịch sử cuộc trò chuyện và các câu trả lời hiện tại của người dùng. Hãy đánh giá xem thông tin đã **đủ** để đưa ra định hướng nghề nghiệp tổng quát và đề xuất các trường đại học phù hợp nhì/phù hợp nhất hay chưa:
-   - Tuyệt đối KHÔNG được coi là đủ thông tin nếu người dùng mới chỉ chào hỏi xã giao, trả lời không liên quan, hoặc thông tin quá sơ sài. Chỉ coi là đủ thông tin khi người dùng đã cung cấp ít nhất một số thông tin cụ thể (chẳng hạn như: sở thích học tập, môn học thế mạnh hoặc mục tiêu nghề nghiệp thực tế).
-   - Nếu chưa đủ thông tin, hãy thiết lập trường 'hasEnoughInfo' là false và 'summary' là null.
-   - Nếu đã đủ thông tin cụ thể, hãy thiết lập trường 'hasEnoughInfo' là true. Đồng thời, từ danh sách các trường đại học được cung cấp ở trên, hãy chọn ra 3 trường phù hợp nhất (lưu vào 'top3') và 5 trường phù hợp nhì (lưu vào 'next5') kèm theo ngành học đề xuất tương ứng (dùng đúng ID Trường và ID Ngành học có trong hệ thống), đánh giá tỷ lệ phần trăm độ phù hợp của trường đại học này với người dùng (số nguyên từ 0 đến 100, ví dụ 80, 75, lưu vào 'matchPercentage'), và viết một nhận xét tổng quan súc tích bằng tiếng Việt về định hướng của họ (lưu vào 'summaryText' thuộc trường 'summary').
-   *Lưu ý: Chỉ chọn trường và ngành thực sự tồn tại trong danh sách cung cấp ở trên. Không tự ý bịa ra ID.*
-
-Trả về kết quả dưới dạng JSON có cấu trúc như sau:
+Trả về dạng JSON:
 {{
-  ""evaluation"": ""Đánh giá của bạn về câu trả lời vừa rồi"",
+  ""evaluation"": ""Đánh giá câu trả lời vừa rồi"",
   ""message"": ""Lời thoại dẫn dắt và câu hỏi tiếp theo"",
-  ""hasEnoughInfo"": true hoặc false,
+  ""hasEnoughInfo"": true/false,
   ""summary"": null hoặc {{
-     ""summaryText"": ""Nhận xét tổng quan bằng tiếng Việt... (dùng markdown nếu cần thiết)"",
-     ""top3"": [
-       {{
-         ""universityId"": ""id-truong-1"",
-         ""matchPercentage"": 85,
-         ""majorIds"": [""id-nganh-1"", ""id-nganh-2""]
-       }}
-     ],
-     ""next5"": [
-       {{
-         ""universityId"": ""id-truong-2"",
-         ""matchPercentage"": 70,
-         ""majorIds"": [""id-nganh-3""]
-       }}
+     ""summaryText"": ""Nhận xét tổng quan..."",
+     ""recommendations"": [
+       {{ ""universityId"": ""guid-cua-truong-dai-hoc"", ""matchPercentage"": 85, ""majorIds"": [""guid-nganh-1"", ""guid-nganh-2""] }}
      ]
   }}
 }}
-Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON này.
 ";
 
             var parsedGuidedResult = await CallGeminiJsonAsync<GeminiGuidedChatResponse>(guidedPrompt);
 
-            UserAiSummaryResponseDto? summaryDto = null;
+            if (lastAnswerEntity != null && parsedGuidedResult != null)
+            {
+                lastAnswerEntity.Evaluation = parsedGuidedResult.evaluation ?? string.Empty;
+                await _unitOfWork.ChatAiAnswerRepository.UpdateAsync(lastAnswerEntity);
+            }
+
             bool enoughInfo = parsedGuidedResult != null && parsedGuidedResult.hasEnoughInfo;
 
-            // Cưỡng chế bằng code C#: Nếu người dùng mới chỉ trả lời ít hơn 2 câu hỏi,
-            // hoặc nội dung cung cấp chưa đủ tối thiểu để phân tích, ta buộc hasEnoughInfo = false
-            if (userAnswers.Count < 2)
-            {
-                enoughInfo = false;
-            }
-
+            ChatAiSummaryResponseDto? summaryDto = null;
             if (enoughInfo && parsedGuidedResult?.summary != null)
             {
-                summaryDto = MapToResponseDto(
-                    userId,
-                    parsedGuidedResult.summary.summaryText,
-                    parsedGuidedResult.summary.top3,
-                    parsedGuidedResult.summary.next5,
-                    universities,
-                    majors
-                );
+                var recommendationsJson = JsonSerializer.Serialize(parsedGuidedResult.summary.recommendations);
+                var existingSummary = (await _unitOfWork.ChatAiSummaryRepository.GetAsync(
+                    s => s.SessionId == session.Id
+                )).FirstOrDefault();
+
+                if (existingSummary != null)
+                {
+                    existingSummary.SummaryText = parsedGuidedResult.summary.summaryText;
+                    existingSummary.Recommendations = recommendationsJson;
+                    existingSummary.UpdatedAt = DateTime.UtcNow;
+                    await _unitOfWork.ChatAiSummaryRepository.UpdateAsync(existingSummary);
+
+                    summaryDto = MapToSummaryDto(
+                        session.Id,
+                        parsedGuidedResult.summary.summaryText,
+                        parsedGuidedResult.summary.recommendations,
+                        universitiesList,
+                        majorsList
+                    );
+                    summaryDto.Id = existingSummary.Id;
+                    summaryDto.CreatedAt = existingSummary.CreatedAt;
+                }
+                else
+                {
+                    var newSummary = new ChatAiSummary
+                    {
+                        Id = Guid.NewGuid(),
+                        SessionId = session.Id,
+                        SummaryText = parsedGuidedResult.summary.summaryText,
+                        Recommendations = recommendationsJson,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.ChatAiSummaryRepository.AddAsync(newSummary);
+
+                    summaryDto = MapToSummaryDto(
+                        session.Id,
+                        parsedGuidedResult.summary.summaryText,
+                        parsedGuidedResult.summary.recommendations,
+                        universitiesList,
+                        majorsList
+                    );
+                    summaryDto.Id = newSummary.Id;
+                    summaryDto.CreatedAt = newSummary.CreatedAt;
+                }
             }
+
+            session.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.ChatAiSessionRepository.UpdateAsync(session);
+            await _unitOfWork.SaveAsync();
 
             return new GuidedChatResponse
             {
+                SessionId = session.Id,
                 Evaluation = parsedGuidedResult?.evaluation ?? string.Empty,
                 Message = parsedGuidedResult?.message ?? string.Empty,
-                IsCompleted = false,
                 HasEnoughInfo = enoughInfo,
                 Summary = summaryDto
             };
         }
 
-        private UserAiSummaryResponseDto MapToResponseDto(
-            Guid userId,
+        private ChatAiSummaryResponseDto MapToSummaryDto(
+            Guid sessionId,
             string summaryText,
-            List<RecommendedUniInfo> top3Info,
-            List<RecommendedUniInfo> next5Info,
+            List<RecommendedUniInfo> recs,
             List<University> loadedUnis,
             List<Major> loadedMajors)
         {
-            var top3Unis = top3Info
+            var recommendations = recs
                 .Select(info => {
                     if (!Guid.TryParse(info.universityId, out var uniGuid)) return null;
                     var uni = loadedUnis.FirstOrDefault(u => u.UniversityId == uniGuid);
@@ -342,47 +465,104 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
                 .Select(u => u!)
                 .ToList();
 
-            var next5Unis = next5Info
-                .Select(info => {
-                    if (!Guid.TryParse(info.universityId, out var uniGuid)) return null;
-                    var uni = loadedUnis.FirstOrDefault(u => u.UniversityId == uniGuid);
-                    if (uni == null) return null;
-
-                    var suitableMajors = info.majorIds
-                        .Select(mid => Guid.TryParse(mid, out var mGuid) ? mGuid : Guid.Empty)
-                        .Select(mGuid => loadedMajors.FirstOrDefault(m => m.MajorId == mGuid))
-                        .Where(m => m != null)
-                        .Select(m => new MajorDto {
-                            MajorId = m!.MajorId,
-                            Name = m.Name ?? string.Empty,
-                            Description = m.Description ?? string.Empty
-                        })
-                        .ToList();
-
-                    return new RecommendedUniversityDto {
-                        UniversityId = uni.UniversityId,
-                        Name = uni.Name,
-                        ShortName = uni.ShortName,
-                        Location = uni.Location,
-                        Ranking = uni.Ranking,
-                        Avatar = uni.Avatar,
-                        MatchPercentage = info.matchPercentage,
-                        SuitableMajors = suitableMajors
-                    };
-                })
-                .Where(u => u != null)
-                .Select(u => u!)
-                .ToList();
-
-            return new UserAiSummaryResponseDto
+            return new ChatAiSummaryResponseDto
             {
                 Id = Guid.Empty,
-                UserId = userId,
+                SessionId = sessionId,
                 SummaryText = summaryText,
                 CreatedAt = DateTime.UtcNow,
-                Top3Universities = top3Unis,
-                Next5Universities = next5Unis
+                Recommendations = recommendations
             };
+        }
+
+        public async Task<IEnumerable<ChatAiSessionDto>> GetUserChatSessionsAsync(Guid userId)
+        {
+            var sessions = await _unitOfWork.ChatAiSessionRepository.GetAsync(
+                s => s.UserId == userId,
+                orderBy: q => q.OrderByDescending(s => s.UpdatedAt)
+            );
+
+            return sessions.Select(s => new ChatAiSessionDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt
+            });
+        }
+
+        public async Task<ChatAiSessionDetailDto?> GetChatSessionDetailAsync(Guid userId, Guid sessionId)
+        {
+            var session = await _unitOfWork.ChatAiSessionRepository.GetByIdAsync(sessionId);
+            if (session == null || session.UserId != userId)
+            {
+                return null;
+            }
+
+            var answers = (await _unitOfWork.ChatAiAnswerRepository.GetAsync(
+                a => a.SessionId == sessionId,
+                includeProperties: "Question"
+            )).OrderBy(a => a.AnsweredAt).ToList();
+
+            ChatAiSummaryResponseDto? summaryDto = null;
+            var summaryEntity = (await _unitOfWork.ChatAiSummaryRepository.GetAsync(
+                s => s.SessionId == sessionId
+            )).FirstOrDefault();
+
+            if (summaryEntity != null)
+            {
+                var recs = string.IsNullOrEmpty(summaryEntity.Recommendations)
+                    ? new List<RecommendedUniInfo>()
+                    : JsonSerializer.Deserialize<List<RecommendedUniInfo>>(summaryEntity.Recommendations) ?? new List<RecommendedUniInfo>();
+
+                var allUniIds = recs.Select(u => Guid.TryParse(u.universityId, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty).Distinct().ToList();
+                var allMajorIds = recs.SelectMany(u => u.majorIds).Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty).Distinct().ToList();
+
+                var loadedUnis = (await _unitOfWork.UniversityRepository.GetAsync(u => allUniIds.Contains(u.UniversityId))).ToList();
+                var loadedMajors = (await _unitOfWork.MajorRepository.GetAsync(m => allMajorIds.Contains(m.MajorId))).ToList();
+
+                summaryDto = MapToSummaryDto(
+                    sessionId,
+                    summaryEntity.SummaryText,
+                    recs,
+                    loadedUnis,
+                    loadedMajors
+                );
+                summaryDto.Id = summaryEntity.Id;
+                summaryDto.CreatedAt = summaryEntity.CreatedAt;
+            }
+
+            var chatHistory = answers.Select(a => new ChatAiMessageDto
+            {
+                QuestionId = a.QuestionId,
+                QuestionContent = a.Question?.Content ?? string.Empty,
+                UserAnswer = a.Answer,
+                Evaluation = a.Evaluation,
+                AnsweredAt = a.AnsweredAt
+            }).ToList();
+
+            return new ChatAiSessionDetailDto
+            {
+                Id = session.Id,
+                Name = session.Name,
+                CreatedAt = session.CreatedAt,
+                UpdatedAt = session.UpdatedAt,
+                Summary = summaryDto,
+                ChatHistory = chatHistory
+            };
+        }
+
+        public async Task<bool> DeleteChatSessionAsync(Guid userId, Guid sessionId)
+        {
+            var session = await _unitOfWork.ChatAiSessionRepository.GetByIdAsync(sessionId);
+            if (session == null || session.UserId != userId)
+            {
+                return false;
+            }
+
+            await _unitOfWork.ChatAiSessionRepository.DeleteAsync(sessionId);
+            await _unitOfWork.SaveAsync();
+            return true;
         }
 
         private async Task<string> CallGeminiSimpleAsync(string prompt)
@@ -474,14 +654,14 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
             var responseJson = await response.Content.ReadAsStringAsync();
             using var document = JsonDocument.Parse(responseJson);
 
-            var answer = document.RootElement
+            var rawAnswer = document.RootElement
                 .GetProperty("candidates")[0]
                 .GetProperty("content")
                 .GetProperty("parts")[0]
                 .GetProperty("text")
                 .GetString();
 
-            return answer?.Trim() ?? string.Empty;
+            return rawAnswer ?? string.Empty;
         }
 
         private async Task<T?> CallGeminiJsonAsync<T>(string prompt)
@@ -586,65 +766,12 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
 
             if (string.IsNullOrEmpty(rawAnswerJson)) return default;
 
-            return JsonSerializer.Deserialize<T>(rawAnswerJson);
-        }
-
-        public async Task<bool> ResetGuidedChatAsync(Guid userId)
-        {
-            // 1. Get Chat AI category
-            var chatCategory = (await _unitOfWork.QuestionCategoryRepository.GetAsync(c => c.IsChatAi)).FirstOrDefault();
-            if (chatCategory == null)
+            var options = new JsonSerializerOptions
             {
-                return false;
-            }
+                PropertyNameCaseInsensitive = true
+            };
 
-            // 2. Get active questions in Chat AI category
-            var chatQuestions = (await _unitOfWork.QuestionRepository.GetAsync(
-                q => q.CategoryId == chatCategory.Id
-            )).ToList();
-
-            if (!chatQuestions.Any())
-            {
-                return false;
-            }
-
-            // 3. Load user answers for these questions
-            var questionIds = chatQuestions.Select(q => q.Id).ToList();
-            var userAnswers = (await _unitOfWork.UserAnswerRepository.GetAsync(
-                a => a.UserId == userId && questionIds.Contains(a.QuestionId)
-            )).ToList();
-
-            if (!userAnswers.Any())
-            {
-                // Vẫn dọn dẹp UserAiSummary nếu tồn tại
-                var summaries = await _unitOfWork.UserAiSummaryRepository.GetAsync(s => s.UserId == userId);
-                if (summaries.Any())
-                {
-                    foreach (var summary in summaries)
-                    {
-                        await _unitOfWork.UserAiSummaryRepository.DeleteAsync(summary.Id);
-                    }
-                    await _unitOfWork.SaveAsync();
-                    return true;
-                }
-                return false;
-            }
-
-            // 4. Delete user answers
-            foreach (var answer in userAnswers)
-            {
-                await _unitOfWork.UserAnswerRepository.DeleteAsync(answer.UserAnswerId);
-            }
-
-            // 5. Delete UserAiSummary associated with this user
-            var userSummaries = await _unitOfWork.UserAiSummaryRepository.GetAsync(s => s.UserId == userId);
-            foreach (var summary in userSummaries)
-            {
-                await _unitOfWork.UserAiSummaryRepository.DeleteAsync(summary.Id);
-            }
-
-            await _unitOfWork.SaveAsync();
-            return true;
+            return JsonSerializer.Deserialize<T>(rawAnswerJson, options);
         }
 
         private class GeminiGuidedChatResponse
@@ -658,8 +785,7 @@ Vui lòng không trả về bất kỳ văn bản nào khác ngoài khối JSON 
         private class GeminiSummaryResponse
         {
             public string summaryText { get; set; } = string.Empty;
-            public List<RecommendedUniInfo> top3 { get; set; } = new List<RecommendedUniInfo>();
-            public List<RecommendedUniInfo> next5 { get; set; } = new List<RecommendedUniInfo>();
+            public List<RecommendedUniInfo> recommendations { get; set; } = new List<RecommendedUniInfo>();
         }
 
         private class RecommendedUniInfo
