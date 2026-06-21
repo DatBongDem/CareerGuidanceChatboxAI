@@ -349,9 +349,12 @@ namespace BusinessLogic.Services
 
                 Username = step1Data.FullName,
 
-                DOB = step1Data.DateOfBirth,
+                // Specify DateTimeKind.Utc for DateOfBirth to prevent PostgreSQL "Cannot write DateTime with Kind=Unspecified" exception
+                DOB = DateTime.SpecifyKind(step1Data.DateOfBirth, DateTimeKind.Utc),
 
                 Address = step1Data.Address,
+
+                Gender = step1Data.Gender,
 
                 PhoneNumber = step1Data.PhoneNumber,
 
