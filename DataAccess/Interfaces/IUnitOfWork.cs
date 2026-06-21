@@ -34,6 +34,9 @@ namespace DataAccess.Interfaces
         IUserAnswerRepository UserAnswerRepository { get; }
         IAiEvaluationRepository AiEvaluationRepository { get; }
         IUserAiSummaryRepository UserAiSummaryRepository { get; }
+        IChatAiSessionRepository ChatAiSessionRepository { get; }
+        IChatAiAnswerRepository ChatAiAnswerRepository { get; }
+        IChatAiSummaryRepository ChatAiSummaryRepository { get; }
 
         IRecommendationRepository RecommendationRepository { get; }
 

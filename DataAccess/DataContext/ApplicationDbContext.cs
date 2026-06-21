@@ -42,6 +42,9 @@ namespace DataAccess.DataContext
         public DbSet<UserAnswer> UserAnswers { get; set; }
         public DbSet<AiEvaluation> AiEvaluations { get; set; }
         public DbSet<UserAiSummary> UserAiSummaries { get; set; }
+        public DbSet<ChatAiSession> ChatAiSessions { get; set; }
+        public DbSet<ChatAiAnswer> ChatAiAnswers { get; set; }
+        public DbSet<ChatAiSummary> ChatAiSummaries { get; set; }
 
         public DbSet<Skill> Skills { get; set; }
         public DbSet<MajorSkill> MajorSkills { get; set; }
@@ -138,8 +141,23 @@ namespace DataAccess.DataContext
                 .HasForeignKey(ae => ae.CategoryId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            
-            
+            modelBuilder.Entity<ChatAiAnswer>()
+                .HasOne(a => a.Session)
+                .WithMany()
+                .HasForeignKey(a => a.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatAiAnswer>()
+                .HasOne(a => a.Question)
+                .WithMany()
+                .HasForeignKey(a => a.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatAiSummary>()
+                .HasOne(s => s.Session)
+                .WithMany()
+                .HasForeignKey(s => s.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
