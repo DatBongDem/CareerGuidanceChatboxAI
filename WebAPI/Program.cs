@@ -129,7 +129,8 @@ namespace WebAPI
                             .WithOrigins(
                                 "http://localhost:5173",
                                 "http://localhost:5174",
-                                "https://4s-company.vercel.app"                              
+                                "https://4s-company.vercel.app",
+                                "https://careerguidancechatboxai.onrender.com"
                             )
                             .AllowAnyHeader()
                             .AllowAnyMethod()
