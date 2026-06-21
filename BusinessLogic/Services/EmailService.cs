@@ -4,6 +4,7 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Services
@@ -29,7 +30,28 @@ namespace BusinessLogic.Services
             email.Body = builder.ToMessageBody();
 
             using var smtp = new SmtpClient();
-            await smtp.ConnectAsync(_emailSettings.SmtpServer, _emailSettings.Port, SecureSocketOptions.StartTls);
+            smtp.Timeout = 10000; // 10 seconds timeout to prevent hanging on Render's 30s limit
+
+            string smtpHost = _emailSettings.SmtpServer;
+            try
+            {
+                // Resolve hostname to IPv4 to bypass Render's IPv6 resolution routing bugs
+                var addresses = await Dns.GetHostAddressesAsync(smtpHost);
+                foreach (var address in addresses)
+                {
+                    if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    {
+                        smtpHost = address.ToString();
+                        break;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to configuration value if DNS resolution fails
+            }
+
+            await smtp.ConnectAsync(smtpHost, _emailSettings.Port, SecureSocketOptions.StartTls);
             await smtp.AuthenticateAsync(_emailSettings.SenderEmail, _emailSettings.AppPassword);
             await smtp.SendAsync(email);
             await smtp.DisconnectAsync(true);
