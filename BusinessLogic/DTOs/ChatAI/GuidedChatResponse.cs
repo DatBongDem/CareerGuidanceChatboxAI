@@ -9,5 +9,6 @@ namespace BusinessLogic.DTOs.ChatAI
         public string Evaluation { get; set; } = string.Empty;
         public bool HasEnoughInfo { get; set; }
         public ChatAiSummaryResponseDto? Summary { get; set; }
+        public string? NextQuestionContent { get; set; }
     }
 }
