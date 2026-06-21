@@ -42,33 +42,75 @@ namespace WebAPI.Controllers
 
             var result = await _chatService.ContinueGuidedChatAsync(
                 userId,
+                request.SessionId,
                 request.Message);
 
             return Ok(result);
         }
 
         [Authorize]
-        [HttpDelete("guided")]
-        public async Task<IActionResult> ResetGuidedChat()
+        [HttpGet("guided/sessions")]
+        public async Task<IActionResult> GetSessions()
         {
             var userId = Guid.Parse(
                 User.FindFirst("UserId")!.Value);
 
-            var success = await _chatService.ResetGuidedChatAsync(userId);
-
-            if (!success)
+            var result = await _chatService.GetUserChatSessionsAsync(userId);
+            return Ok(new
             {
-                return BadRequest(new
+                success = true,
+                message = "Lấy danh sách phiên chat AI thành công.",
+                data = result
+            });
+        }
+
+        [Authorize]
+        [HttpGet("guided/sessions/{sessionId}")]
+        public async Task<IActionResult> GetSessionDetail(Guid sessionId)
+        {
+            var userId = Guid.Parse(
+                User.FindFirst("UserId")!.Value);
+
+            var result = await _chatService.GetChatSessionDetailAsync(userId, sessionId);
+            if (result == null)
+            {
+                return NotFound(new
                 {
                     success = false,
-                    message = "Không tìm thấy dữ liệu chat hoặc không thể xóa lịch sử chat AI."
+                    message = "Không tìm thấy chi tiết phiên chat hoặc phiên chat không thuộc về bạn."
                 });
             }
 
             return Ok(new
             {
                 success = true,
-                message = "Đã xóa lịch sử chat AI thành công."
+                message = "Lấy chi tiết phiên chat AI thành công.",
+                data = result
+            });
+        }
+
+        [Authorize]
+        [HttpDelete("guided/sessions/{sessionId}")]
+        public async Task<IActionResult> DeleteSession(Guid sessionId)
+        {
+            var userId = Guid.Parse(
+                User.FindFirst("UserId")!.Value);
+
+            var success = await _chatService.DeleteChatSessionAsync(userId, sessionId);
+
+            if (!success)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Không tìm thấy phiên chat hoặc không thể xóa."
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "Đã xóa phiên chat AI thành công."
             });
         }
     }
