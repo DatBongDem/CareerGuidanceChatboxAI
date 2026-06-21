@@ -22,7 +22,7 @@ namespace BusinessLogic.Services
         public async Task SendEmailAsync(string toEmail, string subject, string message)
         {
             var email = new MimeMessage();
-            email.Sender = MailboxAddress.Parse(_emailSettings.SenderEmail);
+            email.From.Add(new MailboxAddress("4sCompany", _emailSettings.SenderEmail));
             email.To.Add(MailboxAddress.Parse(toEmail));
             email.Subject = subject;
 
@@ -54,7 +54,7 @@ namespace BusinessLogic.Services
             }
 
             await smtp.ConnectAsync(smtpHost, _emailSettings.Port, SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync(_emailSettings.SenderEmail, _emailSettings.AppPassword);
+            await smtp.AuthenticateAsync(_emailSettings.Username, _emailSettings.AppPassword);
             await smtp.SendAsync(email);
             await smtp.DisconnectAsync(true);
         }
