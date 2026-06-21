@@ -14,16 +14,19 @@ namespace WebAPI.Controllers
     {
         private readonly IPaymentService _paymentService;
         private readonly IPayOSService _payOSService;
+        private readonly IEduService _eduService;
         private readonly IHubContext<PaymentHub> _hubContext;
 
         public PaymentController(
             IPaymentService paymentService,
             IPayOSService payOSService,
-            IHubContext<PaymentHub> hubContext)
+            IEduService eduService,
+            IHubContext<PaymentHub> _hubContextSignalR)
         {
             _paymentService = paymentService;
             _payOSService = payOSService;
-            _hubContext = hubContext;
+            _eduService = eduService;
+            _hubContext = _hubContextSignalR;
         }
 
         [HttpPost("create")]
@@ -61,7 +64,25 @@ namespace WebAPI.Controllers
                 {
                     try
                     {
-                        await _paymentService.ConfirmPaymentAsync(transactionCode);
+                        var isEdu = false;
+                        try
+                        {
+                            await _eduService.ConfirmEduPaymentAsync(transactionCode);
+                            isEdu = true;
+                        }
+                        catch (ApplicationException ex) when (ex.Message.Contains("Không tìm thấy") || ex.Message == "Transaction not found")
+                        {
+                            // Try standard payment
+                        }
+                        catch (ApplicationException ex) when (ex.Message == "Giao dịch đã được xác nhận thanh toán trước đó.")
+                        {
+                            isEdu = true;
+                        }
+
+                        if (!isEdu)
+                        {
+                            await _paymentService.ConfirmPaymentAsync(transactionCode);
+                        }
                     }
                     catch (ApplicationException ex) when (ex.Message == "Payment already confirmed")
                     {
@@ -82,7 +103,25 @@ namespace WebAPI.Controllers
                 {
                     try
                     {
-                        await _paymentService.CancelPaymentAsync(transactionCode);
+                        var isEdu = false;
+                        try
+                        {
+                            await _eduService.CancelEduPaymentAsync(transactionCode);
+                            isEdu = true;
+                        }
+                        catch (ApplicationException ex) when (ex.Message.Contains("Không tìm thấy") || ex.Message == "Transaction not found")
+                        {
+                            // Try standard payment
+                        }
+                        catch (ApplicationException ex) when (ex.Message == "Không thể hủy giao dịch đã thanh toán thành công.")
+                        {
+                            isEdu = true;
+                        }
+
+                        if (!isEdu)
+                        {
+                            await _paymentService.CancelPaymentAsync(transactionCode);
+                        }
                     }
                     catch (ApplicationException ex) when (ex.Message == "Payment has already been cancelled." || ex.Message == "Cannot cancel a successful payment.")
                     {

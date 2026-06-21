@@ -48,6 +48,9 @@ namespace DataAccess.Interfaces
         IUniversityMajorRepository UniversityMajorRepository { get; }
         IUniversityMajorMethodRepository UniversityMajorMethodRepository { get; }
 
+        IEduRegistrationRepository EduRegistrationRepository { get; }
+        IEduActivationKeyRepository EduActivationKeyRepository { get; }
+
         Task<int> SaveAsync();
     }
 }

@@ -11,6 +11,7 @@ namespace BusinessLogic.DTOs.ChatAI
         public DateTime UpdatedAt { get; set; }
         public ChatAiSummaryResponseDto? Summary { get; set; }
         public List<ChatAiMessageDto> ChatHistory { get; set; } = new List<ChatAiMessageDto>();
+        public string? NextQuestionContent { get; set; }
     }
 
     public class ChatAiMessageDto
