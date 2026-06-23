@@ -39,6 +39,13 @@ namespace DataAccess.Repositories
         public IMajorSkillRepository MajorSkillRepository { get; private set; }
         public IUniversityMajorRepository UniversityMajorRepository { get; }
         public IUniversityMajorMethodRepository UniversityMajorMethodRepository { get; }
+        public ICampusRepository CampusRepository { get; }
+        public ISubjectCombinationRepository SubjectCombinationRepository { get; }
+        public IUniversityMajorAdmissionRepository UniversityMajorAdmissionRepository { get; }
+        public ITraitRepository TraitRepository { get; }
+        public IMajorTraitRepository MajorTraitRepository { get; }
+
+
         public UnitOfWork(ApplicationDbContext context)
         { }
         public UnitOfWork(
@@ -57,7 +64,7 @@ namespace DataAccess.Repositories
             IQuestionCategoryRepository questionCategoryRepository,
             IQuestionRepository questionRepository,
             IQuestionOptionRepository questionOptionRepository)
-
+            
         {
             _context = context;
 
@@ -92,6 +99,12 @@ namespace DataAccess.Repositories
             MajorSkillRepository = new MajorSkillRepository(_context);
             UniversityMajorRepository = new UniversityMajorRepository(_context);
             UniversityMajorMethodRepository = new UniversityMajorMethodRepository(_context);
+            SubjectCombinationRepository = new SubjectCombinationRepository(context);
+            UniversityMajorAdmissionRepository = new UniversityMajorAdmissionRepository(context);
+            TraitRepository = new TraitRepository(context);
+            MajorTraitRepository = new MajorTraitRepository(context);
+            CampusRepository = new CampusRepository(context);
+
             RefreshTokenRepository =
                 refreshTokenRepository;
 
