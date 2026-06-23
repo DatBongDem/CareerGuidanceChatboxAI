@@ -58,6 +58,10 @@ namespace WebAPI.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message, details = ex.ToString() });
+            }
         }
 
         [HttpPost("import-keys/{registrationId}")]
