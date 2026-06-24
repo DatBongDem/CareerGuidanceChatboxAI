@@ -378,5 +378,56 @@ namespace BusinessLogic.Services
 
             await _unitOfWork.SaveAsync();
         }
+
+        public async Task<EduRegistrationResponseDto?> GetEduRegistrationByTransactionCodeAsync(string transactionCode)
+        {
+            var r = await _unitOfWork.EduRegistrationRepository.GetByTransactionCodeAsync(transactionCode);
+            if (r == null) return null;
+
+            return new EduRegistrationResponseDto
+            {
+                Id = r.Id,
+                SchoolName = r.SchoolName,
+                ContactName = r.ContactName,
+                Email = r.Email,
+                PhoneNumber = r.PhoneNumber,
+                StudentCount = r.StudentCount,
+                Notes = r.Notes,
+                CreatedAt = r.CreatedAt,
+                Status = r.Status,
+                PlanId = r.PlanId,
+                PlanName = r.Plan?.Name,
+                TransactionCode = r.TransactionCode
+            };
+        }
+
+        public async Task<EduRegistrationResponseDto> UpdateEduRegistrationStatusAsync(Guid registrationId, string status)
+        {
+            var r = await _unitOfWork.EduRegistrationRepository.GetByIdAsync(registrationId);
+            if (r == null)
+            {
+                throw new ApplicationException("Không tìm thấy thông tin đăng ký trường học.");
+            }
+
+            r.Status = status;
+            await _unitOfWork.EduRegistrationRepository.UpdateAsync(r);
+            await _unitOfWork.SaveAsync();
+
+            return new EduRegistrationResponseDto
+            {
+                Id = r.Id,
+                SchoolName = r.SchoolName,
+                ContactName = r.ContactName,
+                Email = r.Email,
+                PhoneNumber = r.PhoneNumber,
+                StudentCount = r.StudentCount,
+                Notes = r.Notes,
+                CreatedAt = r.CreatedAt,
+                Status = r.Status,
+                PlanId = r.PlanId,
+                PlanName = r.Plan?.Name,
+                TransactionCode = r.TransactionCode
+            };
+        }
     }
 }
