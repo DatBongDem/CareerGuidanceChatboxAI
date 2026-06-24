@@ -49,7 +49,7 @@ namespace BusinessLogic.Services
                 },
                 CancelUrl = _settings.CancelUrl,
                 ReturnUrl = _settings.ReturnUrl,
-                ExpiredAt = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds()
+                ExpiredAt = DateTimeOffset.UtcNow.AddDays(14).ToUnixTimeSeconds()
             };
 
             var result = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
