@@ -99,5 +99,36 @@ namespace WebAPI.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpGet("by-transaction/{transactionCode}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<EduRegistrationResponseDto>> GetByTransactionCode(string transactionCode)
+        {
+            var result = await _eduService.GetEduRegistrationByTransactionCodeAsync(transactionCode);
+            if (result == null)
+            {
+                return NotFound(new { message = "Không tìm thấy đăng ký với mã giao dịch này." });
+            }
+            return Ok(result);
+        }
+
+        [HttpPut("update-status/{registrationId}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<EduRegistrationResponseDto>> UpdateStatus(Guid registrationId, [FromQuery] string status)
+        {
+            try
+            {
+                var result = await _eduService.UpdateEduRegistrationStatusAsync(registrationId, status);
+                return Ok(result);
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message, details = ex.ToString() });
+            }
+        }
     }
 }
