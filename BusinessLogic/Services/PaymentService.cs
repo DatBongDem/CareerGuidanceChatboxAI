@@ -197,7 +197,7 @@ namespace BusinessLogic.Services
                 PaidAt = t.PaidAt,
                 Status = successTransactionIds.Contains(t.TransactionId)
                     ? "Success"
-                    : (DateTime.UtcNow < t.CreatedAt.AddMinutes(5) ? "Pending" : "Expired")
+                    : (DateTime.UtcNow < t.CreatedAt.AddDays(14) ? "Pending" : "Expired")
             });
         }
 
@@ -225,7 +225,7 @@ namespace BusinessLogic.Services
                 PaidAt = t.PaidAt,
                 Status = successTransactionIds.Contains(t.TransactionId)
                     ? "Success"
-                    : (DateTime.UtcNow < t.CreatedAt.AddMinutes(5) ? "Pending" : "Expired")
+                    : (DateTime.UtcNow < t.CreatedAt.AddDays(14) ? "Pending" : "Expired")
             });
         }
     }
