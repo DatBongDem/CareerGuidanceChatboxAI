@@ -16,22 +16,25 @@ namespace DataAccess.Repositories
         }
 
         public async Task<(IEnumerable<UniversityMajor>, int)> GetPagedAsync(
-            string search,
-            int page,
-            int pageSize)
+         string search,
+         int page,
+         int pageSize)
         {
-            var query = _context.Set<UniversityMajor>()
+            var query = _context.UniversityMajors
                 .Include(x => x.University)
                 .Include(x => x.Major)
                 .AsQueryable();
-
-            if (!string.IsNullOrEmpty(search))
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                search = search.ToLower();
+                search = search.Trim().ToLower(); 
+
                 query = query.Where(x =>
-                    x.University.Name.ToLower().Contains(search) ||
-                    x.Major.Name.ToLower().Contains(search));
+                    (x.University.Name != null && x.University.Name.ToLower().Trim().Contains(search)) ||
+                    (x.University.ShortName != null && x.University.ShortName.ToLower().Trim().Contains(search)) ||
+                    (x.Major.Name != null && x.Major.Name.ToLower().Trim().Contains(search))
+                );
             }
+
 
             var total = await query.CountAsync();
 

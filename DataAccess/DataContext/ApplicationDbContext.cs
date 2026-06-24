@@ -53,6 +53,11 @@ namespace DataAccess.DataContext
 
         public DbSet<AdmissionMethod> AdmissionMethods { get; set; }
         public DbSet<UniversityMajorMethod> UniversityMajorMethods { get; set; }
+        public DbSet<Campus> Campuses { get; set; }
+        public DbSet<SubjectCombination> SubjectCombinations { get; set; }
+        public DbSet<UniversityMajorAdmission> UniversityMajorAdmissions { get; set; }
+        public DbSet<Trait> Traits { get; set; }
+        public DbSet<MajorTrait> MajorTraits { get; set; }
 
 
 

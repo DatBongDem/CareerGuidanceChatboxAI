@@ -47,6 +47,14 @@ namespace DataAccess.Interfaces
         IMajorSkillRepository MajorSkillRepository { get; }
         IUniversityMajorRepository UniversityMajorRepository { get; }
         IUniversityMajorMethodRepository UniversityMajorMethodRepository { get; }
+        ICampusRepository CampusRepository { get; }
+        ISubjectCombinationRepository SubjectCombinationRepository { get; }
+        IUniversityMajorAdmissionRepository UniversityMajorAdmissionRepository { get; }
+        ITraitRepository TraitRepository { get; }
+        IMajorTraitRepository MajorTraitRepository { get; }
+
+
+
 
         Task<int> SaveAsync();
     }
