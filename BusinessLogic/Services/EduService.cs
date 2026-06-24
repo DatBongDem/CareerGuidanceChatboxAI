@@ -119,6 +119,8 @@ namespace BusinessLogic.Services
                 totalAmount
             );
 
+            string qrImageUrl = $"https://img.vietqr.io/image/{paymentLinkResult.Bin}-{paymentLinkResult.AccountNumber}-qr_only.png?amount={(long)totalAmount}&addInfo={Uri.EscapeDataString(paymentLinkResult.Description)}&accountName={Uri.EscapeDataString(paymentLinkResult.AccountName)}";
+
             return new CreatePaymentResponseDto
             {
                 QrCode = paymentLinkResult.QrCode,
@@ -128,7 +130,9 @@ namespace BusinessLogic.Services
                 Description = paymentLinkResult.Description,
                 TransactionCode = transactionCode,
                 Amount = totalAmount,
-                PlanName = registration.Plan.Name
+                PlanName = registration.Plan.Name,
+                CheckoutUrl = paymentLinkResult.CheckoutUrl,
+                QrImageUrl = qrImageUrl
             };
         }
 

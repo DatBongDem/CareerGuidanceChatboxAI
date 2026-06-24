@@ -23,5 +23,9 @@ namespace BusinessLogic.DTOs.Payment
         public decimal Amount { get; set; }
 
         public string PlanName { get; set; } = string.Empty;
+
+        public string CheckoutUrl { get; set; } = string.Empty;
+
+        public string QrImageUrl { get; set; } = string.Empty;
     }
 }
