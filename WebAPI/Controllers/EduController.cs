@@ -64,6 +64,26 @@ namespace WebAPI.Controllers
             }
         }
 
+        [HttpPost("send-payment-email/{registrationId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SendEduPaymentEmail(Guid registrationId, [FromBody] CreateEduPaymentRequestDto dto)
+        {
+            try
+            {
+                string emailContent = dto?.EmailContent ?? "Kính gửi nhà trường, đây là thông tin thanh toán cho gói đăng ký dịch vụ EDU của bạn.";
+                await _eduService.SendEduPaymentEmailAsync(registrationId, emailContent);
+                return Ok(new { message = "Gửi email thông tin thanh toán thành công." });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message, details = ex.ToString() });
+            }
+        }
+
         [HttpPost("import-keys/{registrationId}")]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<EduActivationKeyResponseDto>>> ImportEduKeys(Guid registrationId, IFormFile file)

@@ -1,6 +1,7 @@
 using PayOS.Models.Webhooks;
 using PayOS.Models.V2.PaymentRequests;
 using System.Threading.Tasks;
+using BusinessLogic.DTOs.Payment;
 
 namespace BusinessLogic.Interfaces
 {
@@ -12,5 +13,6 @@ namespace BusinessLogic.Interfaces
             decimal amount);
 
         Task<WebhookData> VerifyWebhookDataAsync(Webhook webhookBody);
+        Task<PaymentLinkInformation> GetPaymentLinkInformationAsync(string orderCode);
     }
 }

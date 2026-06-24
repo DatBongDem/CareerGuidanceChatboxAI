@@ -19,11 +19,13 @@ namespace BusinessLogic.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPayOSService _payOSService;
+        private readonly IEmailService _emailService;
 
-        public EduService(IUnitOfWork unitOfWork, IPayOSService payOSService)
+        public EduService(IUnitOfWork unitOfWork, IPayOSService payOSService, IEmailService emailService)
         {
             _unitOfWork = unitOfWork;
             _payOSService = payOSService;
+            _emailService = emailService;
         }
 
         public async Task<EduRegistrationResponseDto> RegisterEduAsync(CreateEduRegistrationDto dto)
@@ -110,14 +112,21 @@ namespace BusinessLogic.Services
 
             string transactionCode = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
             registration.TransactionCode = transactionCode;
-            await _unitOfWork.EduRegistrationRepository.UpdateAsync(registration);
-            await _unitOfWork.SaveAsync();
 
             var paymentLinkResult = await _payOSService.CreatePaymentLinkAsync(
                 transactionCode,
                 $"{registration.SchoolName} (EDU)",
                 totalAmount
             );
+
+            registration.CheckoutUrl = paymentLinkResult.CheckoutUrl;
+            registration.Bin = paymentLinkResult.Bin;
+            registration.AccountNumber = paymentLinkResult.AccountNumber;
+            registration.AccountName = paymentLinkResult.AccountName;
+            registration.PaymentDescription = paymentLinkResult.Description;
+
+            await _unitOfWork.EduRegistrationRepository.UpdateAsync(registration);
+            await _unitOfWork.SaveAsync();
 
             string qrImageUrl = $"https://img.vietqr.io/image/{paymentLinkResult.Bin}-{paymentLinkResult.AccountNumber}-qr_only.png?amount={(long)totalAmount}&addInfo={Uri.EscapeDataString(paymentLinkResult.Description)}&accountName={Uri.EscapeDataString(paymentLinkResult.AccountName)}";
 
@@ -134,6 +143,60 @@ namespace BusinessLogic.Services
                 CheckoutUrl = paymentLinkResult.CheckoutUrl,
                 QrImageUrl = qrImageUrl
             };
+        }
+
+        public async Task SendEduPaymentEmailAsync(Guid registrationId, string emailContent)
+        {
+            var registration = await _unitOfWork.EduRegistrationRepository.GetByIdAsync(registrationId);
+            if (registration == null)
+            {
+                throw new ApplicationException("Không tìm thấy thông tin đăng ký trường học.");
+            }
+
+            if (string.IsNullOrEmpty(registration.TransactionCode) || string.IsNullOrEmpty(registration.Bin) || string.IsNullOrEmpty(registration.AccountNumber))
+            {
+                throw new ApplicationException("Giao dịch thanh toán chưa được tạo hoặc chưa hoàn tất khởi tạo cho đơn đăng ký này.");
+            }
+
+            if (registration.Plan == null)
+            {
+                throw new ApplicationException("Không tìm thấy gói dịch vụ tương ứng.");
+            }
+
+            decimal totalAmount = registration.Plan.Price * registration.StudentCount;
+
+            string qrImageUrl = $"https://img.vietqr.io/image/{registration.Bin}-{registration.AccountNumber}-qr_only.png?amount={(long)totalAmount}&addInfo={Uri.EscapeDataString(registration.PaymentDescription ?? "")}&accountName={Uri.EscapeDataString(registration.AccountName ?? "")}";
+
+            string formattedAmount = totalAmount.ToString("N0", new System.Globalization.CultureInfo("vi-VN"));
+            string htmlBody = $@"
+<div style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;"">
+    <h2 style=""color: #1a73e8; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; margin-top: 0;"">Thông Tin Thanh Toán Gói EDU - 4sCompany</h2>
+    
+    <p style=""white-space: pre-line; font-size: 15px;"">{emailContent}</p>
+    
+    <div style=""background-color: #f8f9fa; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;"">
+        <h3 style=""margin-top: 0; color: #334155;"">Thông tin chuyển khoản</h3>
+        <p style=""margin: 5px 0;""><strong>Số tiền:</strong> <span style=""color: #ef4444; font-size: 18px;"">{formattedAmount} VNĐ</span></p>
+        <p style=""margin: 5px 0;""><strong>Nội dung chuyển khoản (Transaction Code):</strong> <span style=""color: #2563eb; font-family: monospace; font-size: 16px;"">{registration.TransactionCode}</span></p>
+        
+        <div style=""margin: 20px 0;"">
+            <img src=""{qrImageUrl}"" alt=""Mã QR Chuyển Tiền"" style=""max-width: 250px; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"" />
+        </div>
+        
+        <p style=""margin: 15px 0 0 0; font-size: 14px; color: #64748b;"">
+            Hoặc bạn có thể bấm trực tiếp vào đường link sau để tiến hành thanh toán:
+        </p>
+        <p style=""margin: 10px 0 0 0;"">
+            <a href=""{registration.CheckoutUrl}"" target=""_blank"" style=""display: inline-block; background-color: #1a73e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;"">Thanh toán ngay</a>
+        </p>
+    </div>
+    
+    <p style=""font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 25px; text-align: center;"">
+        Đây là email tự động từ hệ thống của 4sCompany. Vui lòng không trả lời trực tiếp email này.
+    </p>
+</div>";
+
+            await _emailService.SendEmailAsync(registration.Email, "Thong tin thanh toan goi EDU - 4sCompany", htmlBody);
         }
 
         public async Task ConfirmEduPaymentAsync(string transactionCode)
