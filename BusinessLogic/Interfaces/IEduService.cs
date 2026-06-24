@@ -12,6 +12,7 @@ namespace BusinessLogic.Interfaces
         Task<EduRegistrationResponseDto> RegisterEduAsync(CreateEduRegistrationDto dto);
         Task<IEnumerable<EduRegistrationResponseDto>> GetEduRegistrationsAsync();
         Task<CreatePaymentResponseDto> CreateEduPaymentLinkAsync(Guid registrationId);
+        Task SendEduPaymentEmailAsync(Guid registrationId, string emailContent);
         Task ConfirmEduPaymentAsync(string transactionCode);
         Task CancelEduPaymentAsync(string transactionCode);
         Task<IEnumerable<EduActivationKeyResponseDto>> ImportEduKeysAsync(Guid registrationId, IFormFile file);
