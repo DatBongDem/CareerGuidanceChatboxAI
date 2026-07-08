@@ -41,6 +41,7 @@ namespace DataAccess.Repositories
         public IUniversityMajorMethodRepository UniversityMajorMethodRepository { get; }
         public IEduRegistrationRepository EduRegistrationRepository { get; }
         public IEduActivationKeyRepository EduActivationKeyRepository { get; }
+        public IOperationalExpenseRepository OperationalExpenseRepository { get; }
         public UnitOfWork(ApplicationDbContext context)
         { }
         public UnitOfWork(
@@ -96,6 +97,7 @@ namespace DataAccess.Repositories
             UniversityMajorMethodRepository = new UniversityMajorMethodRepository(_context);
             EduRegistrationRepository = new EduRegistrationRepository(_context);
             EduActivationKeyRepository = new EduActivationKeyRepository(_context);
+            OperationalExpenseRepository = new OperationalExpenseRepository(_context);
             RefreshTokenRepository =
                 refreshTokenRepository;
 

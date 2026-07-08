@@ -75,6 +75,7 @@ namespace WebAPI
             builder.Services.AddScoped<IUserAiSummaryRepository, UserAiSummaryRepository>();
             builder.Services.AddScoped<IEduRegistrationRepository, EduRegistrationRepository>();
             builder.Services.AddScoped<IEduActivationKeyRepository, EduActivationKeyRepository>();
+            builder.Services.AddScoped<IOperationalExpenseRepository, OperationalExpenseRepository>();
 
 
 
@@ -113,6 +114,7 @@ namespace WebAPI
             builder.Services.AddScoped<IUniversityMajorService, UniversityMajorService>();
             builder.Services.AddScoped<IUniversityMajorMethodService, UniversityMajorMethodService>();
             builder.Services.AddScoped<IEduService, EduService>();
+            builder.Services.AddScoped<IFinanceService, FinanceService>();
 
 
             builder.Services.AddHttpClient();
