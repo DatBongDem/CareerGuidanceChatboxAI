@@ -44,8 +44,9 @@ namespace DataAccess.Repositories
         public IUniversityMajorAdmissionRepository UniversityMajorAdmissionRepository { get; }
         public ITraitRepository TraitRepository { get; }
         public IMajorTraitRepository MajorTraitRepository { get; }
-
-
+        public IEduRegistrationRepository EduRegistrationRepository { get; }
+        public IEduActivationKeyRepository EduActivationKeyRepository { get; }
+        public IOperationalExpenseRepository OperationalExpenseRepository { get; }
         public UnitOfWork(ApplicationDbContext context)
         { }
         public UnitOfWork(
@@ -104,7 +105,9 @@ namespace DataAccess.Repositories
             TraitRepository = new TraitRepository(context);
             MajorTraitRepository = new MajorTraitRepository(context);
             CampusRepository = new CampusRepository(context);
-
+            EduRegistrationRepository = new EduRegistrationRepository(_context);
+            EduActivationKeyRepository = new EduActivationKeyRepository(_context);
+            OperationalExpenseRepository = new OperationalExpenseRepository(_context);
             RefreshTokenRepository =
                 refreshTokenRepository;
 

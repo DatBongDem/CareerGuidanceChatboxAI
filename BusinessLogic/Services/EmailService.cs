@@ -1,9 +1,8 @@
 using BusinessLogic.DTOs.Email;
 using BusinessLogic.Interfaces;
-using MailKit.Net.Smtp;
-using MailKit.Security;
 using Microsoft.Extensions.Options;
-using MimeKit;
+using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Services
@@ -11,28 +10,48 @@ namespace BusinessLogic.Services
     public class EmailService : IEmailService
     {
         private readonly EmailSettings _emailSettings;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public EmailService(IOptions<EmailSettings> emailSettings)
+        public EmailService(IOptions<EmailSettings> emailSettings, IHttpClientFactory httpClientFactory)
         {
             _emailSettings = emailSettings.Value;
+            _httpClientFactory = httpClientFactory;
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string message)
         {
-            var email = new MimeMessage();
-            email.Sender = MailboxAddress.Parse(_emailSettings.SenderEmail);
-            email.To.Add(MailboxAddress.Parse(toEmail));
-            email.Subject = subject;
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("api-key", _emailSettings.AppPassword);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            var builder = new BodyBuilder();
-            builder.HtmlBody = message;
-            email.Body = builder.ToMessageBody();
+            var payload = new
+            {
+                sender = new
+                {
+                    name = "4sCompany",
+                    email = _emailSettings.SenderEmail
+                },
+                to = new[]
+                {
+                    new
+                    {
+                        email = toEmail
+                    }
+                },
+                subject = subject,
+                htmlContent = message
+            };
 
-            using var smtp = new SmtpClient();
-            await smtp.ConnectAsync(_emailSettings.SmtpServer, _emailSettings.Port, SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync(_emailSettings.SenderEmail, _emailSettings.AppPassword);
-            await smtp.SendAsync(email);
-            await smtp.DisconnectAsync(true);
+            var json = JsonSerializer.Serialize(payload);
+            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorDetail = await response.Content.ReadAsStringAsync();
+                throw new System.Exception($"Failed to send email via Brevo API. Status: {response.StatusCode}, Details: {errorDetail}");
+            }
         }
     }
 }

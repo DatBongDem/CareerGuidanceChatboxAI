@@ -78,6 +78,9 @@ namespace WebAPI
             builder.Services.AddScoped<IUniversityMajorAdmissionRepository, UniversityMajorAdmissionRepository>();
             builder.Services.AddScoped<ITraitRepository, TraitRepository>();
             builder.Services.AddScoped<IMajorTraitRepository, MajorTraitRepository>();
+            builder.Services.AddScoped<IEduRegistrationRepository, EduRegistrationRepository>();
+            builder.Services.AddScoped<IEduActivationKeyRepository, EduActivationKeyRepository>();
+            builder.Services.AddScoped<IOperationalExpenseRepository, OperationalExpenseRepository>();
 
 
 
@@ -120,6 +123,8 @@ namespace WebAPI
             builder.Services.AddScoped<IUniversityMajorAdmissionService, UniversityMajorAdmissionService>();
             builder.Services.AddScoped<ITraitService, TraitService>();
             builder.Services.AddScoped<IMajorTraitService, MajorTraitService>();
+            builder.Services.AddScoped<IEduService, EduService>();
+            builder.Services.AddScoped<IFinanceService, FinanceService>();
 
 
             builder.Services.AddHttpClient();
@@ -136,7 +141,8 @@ namespace WebAPI
                             .WithOrigins(
                                 "http://localhost:5173",
                                 "http://localhost:5174",
-                                "https://4s-company.vercel.app"                              
+                                "https://4s-company.vercel.app",
+                                "https://careerguidancechatboxai.onrender.com"
                             )
                             .AllowAnyHeader()
                             .AllowAnyMethod()

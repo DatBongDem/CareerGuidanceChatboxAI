@@ -87,6 +87,8 @@ namespace BusinessLogic.Services
                         plan.Name,
                         plan.Price);
 
+            string qrImageUrl = $"https://img.vietqr.io/image/{paymentLinkResult.Bin}-{paymentLinkResult.AccountNumber}-qr_only.png?amount={(long)plan.Price}&addInfo={Uri.EscapeDataString(paymentLinkResult.Description)}&accountName={Uri.EscapeDataString(paymentLinkResult.AccountName)}";
+
             return new CreatePaymentResponseDto
             {
                 QrCode = paymentLinkResult.QrCode,
@@ -96,7 +98,9 @@ namespace BusinessLogic.Services
                 Description = paymentLinkResult.Description,
                 TransactionCode = transactionCode,
                 Amount = plan.Price,
-                PlanName = plan.Name
+                PlanName = plan.Name,
+                CheckoutUrl = paymentLinkResult.CheckoutUrl,
+                QrImageUrl = qrImageUrl
             };
         }
 
@@ -193,7 +197,7 @@ namespace BusinessLogic.Services
                 PaidAt = t.PaidAt,
                 Status = successTransactionIds.Contains(t.TransactionId)
                     ? "Success"
-                    : (DateTime.UtcNow < t.CreatedAt.AddMinutes(5) ? "Pending" : "Expired")
+                    : (DateTime.UtcNow < t.CreatedAt.AddDays(14) ? "Pending" : "Expired")
             });
         }
 
@@ -221,7 +225,7 @@ namespace BusinessLogic.Services
                 PaidAt = t.PaidAt,
                 Status = successTransactionIds.Contains(t.TransactionId)
                     ? "Success"
-                    : (DateTime.UtcNow < t.CreatedAt.AddMinutes(5) ? "Pending" : "Expired")
+                    : (DateTime.UtcNow < t.CreatedAt.AddDays(14) ? "Pending" : "Expired")
             });
         }
     }

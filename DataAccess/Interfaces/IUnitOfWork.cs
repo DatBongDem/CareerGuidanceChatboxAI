@@ -56,6 +56,10 @@ namespace DataAccess.Interfaces
 
 
 
+        IEduRegistrationRepository EduRegistrationRepository { get; }
+        IEduActivationKeyRepository EduActivationKeyRepository { get; }
+        IOperationalExpenseRepository OperationalExpenseRepository { get; }
+        
         Task<int> SaveAsync();
     }
 }

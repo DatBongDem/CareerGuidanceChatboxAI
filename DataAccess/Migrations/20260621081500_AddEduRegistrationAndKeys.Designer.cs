@@ -3,6 +3,7 @@ using System;
 using DataAccess.DataContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260621081500_AddEduRegistrationAndKeys")]
+    partial class AddEduRegistrationAndKeys
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -324,18 +327,6 @@ namespace DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AccountName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AccountNumber")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Bin")
-                        .HasColumnType("text");
-
-                    b.Property<string>("CheckoutUrl")
-                        .HasColumnType("text");
-
                     b.Property<string>("ContactName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -349,9 +340,6 @@ namespace DataAccess.Migrations
 
                     b.Property<string>("Notes")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PaymentDescription")
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
@@ -422,34 +410,6 @@ namespace DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("EmailVerifications", (string)null);
-                });
-
-            modelBuilder.Entity("DataAccess.Entities.OperationalExpense", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("OperationalExpenses");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.PaymentTransaction", b =>

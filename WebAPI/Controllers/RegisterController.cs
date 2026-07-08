@@ -2,6 +2,7 @@ using BusinessLogic.DTOs.User;
 using BusinessLogic.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace WebAPI.Controllers
@@ -15,6 +16,28 @@ namespace WebAPI.Controllers
         public RegisterController(IAuthService authService)
         {
             _authService = authService;
+        }
+
+        [HttpGet("test-smtp")]
+        public async Task<IActionResult> TestSmtp()
+        {
+            try
+            {
+                using var tcp = new TcpClient();
+
+                var task = tcp.ConnectAsync("smtp.gmail.com", 587);
+
+                if (await Task.WhenAny(task, Task.Delay(10000)) != task)
+                {
+                    return Ok("TIMEOUT");
+                }
+
+                return Ok("CONNECTED");
+            }
+            catch (Exception ex)
+            {
+                return Ok(ex.ToString());
+            }
         }
 
         [HttpPost("register-step1")]
