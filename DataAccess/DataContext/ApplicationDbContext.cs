@@ -56,6 +56,7 @@ namespace DataAccess.DataContext
 
         public DbSet<EduRegistration> EduRegistrations { get; set; }
         public DbSet<EduActivationKey> EduActivationKeys { get; set; }
+        public DbSet<OperationalExpense> OperationalExpenses { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

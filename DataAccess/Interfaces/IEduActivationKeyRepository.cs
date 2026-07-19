@@ -8,5 +8,6 @@ namespace DataAccess.Interfaces
     {
         Task<EduActivationKey?> GetByKeyAsync(string key);
         Task<EduActivationKey?> GetByEmailAndRegistrationIdAsync(string email, Guid registrationId);
+        Task<EduActivationKey?> GetByKeyAndEmailAsync(string key, string email);
     }
 }

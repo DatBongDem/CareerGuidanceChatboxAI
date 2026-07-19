@@ -73,6 +73,11 @@ namespace BusinessLogic.Services
         public async Task<IEnumerable<EduRegistrationResponseDto>> GetEduRegistrationsAsync()
         {
             var registrations = await _unitOfWork.EduRegistrationRepository.GetAllAsync();
+            var allKeys = await _unitOfWork.EduActivationKeyRepository.GetAllAsync();
+            var keysByRegId = allKeys
+                .GroupBy(k => k.RegistrationId)
+                .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.ActivationKey);
+
             return registrations.Select(r => new EduRegistrationResponseDto
             {
                 Id = r.Id,
@@ -86,7 +91,8 @@ namespace BusinessLogic.Services
                 Status = r.Status,
                 PlanId = r.PlanId,
                 PlanName = r.Plan?.Name,
-                TransactionCode = r.TransactionCode
+                TransactionCode = r.TransactionCode,
+                Key = keysByRegId.TryGetValue(r.Id, out var key) ? key : null
             });
         }
 
@@ -269,15 +275,29 @@ namespace BusinessLogic.Services
                     using (var entryStream = entry.Open())
                     {
                         var doc = XDocument.Load(entryStream);
-                        var textElements = doc.Descendants().Where(e => e.Name.LocalName == "t");
+                        var paragraphs = doc.Descendants().Where(e => e.Name.LocalName == "p").ToList();
                         var sb = new System.Text.StringBuilder();
-                        foreach (var el in textElements)
-                        {
-                            sb.Append(el.Value + " ");
-                        }
-                        var text = sb.ToString();
 
-                        var emailRegex = new Regex(@"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", RegexOptions.Compiled);
+                        if (paragraphs.Any())
+                        {
+                            foreach (var p in paragraphs)
+                            {
+                                var tNodes = p.Descendants().Where(e => e.Name.LocalName == "t");
+                                var paragraphText = string.Concat(tNodes.Select(e => e.Value));
+                                sb.AppendLine(paragraphText);
+                            }
+                        }
+                        else
+                        {
+                            var textElements = doc.Descendants().Where(e => e.Name.LocalName == "t");
+                            foreach (var el in textElements)
+                            {
+                                sb.Append(el.Value + " ");
+                            }
+                        }
+
+                        var text = sb.ToString();
+                        var emailRegex = new Regex(@"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
                         var matches = emailRegex.Matches(text);
                         foreach (Match match in matches)
                         {
@@ -301,27 +321,35 @@ namespace BusinessLogic.Services
                 throw new ApplicationException("Không tìm thấy địa chỉ email học sinh nào trong tệp Word.");
             }
 
-            var existingKeys = await _unitOfWork.EduActivationKeyRepository.GetAsync(filter: k => k.RegistrationId == registrationId);
-            var totalKeysCount = existingKeys.Count() + distinctEmails.Count(e => !existingKeys.Any(ek => ek.Email == e));
+            var existingKeys = (await _unitOfWork.EduActivationKeyRepository.GetAsync(filter: k => k.RegistrationId == registrationId)).ToList();
+
+            // Nếu người dùng import file mới, tự động xóa các key chưa kích hoạt không còn thuộc danh sách email trong file mới
+            var unusedKeysToRemove = existingKeys
+                .Where(k => !k.IsUsed && !distinctEmails.Any(e => string.Equals(e, k.Email, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            if (unusedKeysToRemove.Any())
+            {
+                foreach (var keyToRemove in unusedKeysToRemove)
+                {
+                    await _unitOfWork.EduActivationKeyRepository.DeleteAsync(keyToRemove.Id);
+                    existingKeys.Remove(keyToRemove);
+                }
+            }
+
+            var totalKeysCount = existingKeys.Count() + distinctEmails.Count(e => !existingKeys.Any(ek => string.Equals(ek.Email, e, StringComparison.OrdinalIgnoreCase)));
             if (totalKeysCount > registration.StudentCount)
             {
                 throw new ApplicationException($"Tổng số học sinh sau khi import ({totalKeysCount}) sẽ vượt quá số học sinh đăng ký ({registration.StudentCount}).");
             }
 
-            var resultKeys = new List<EduActivationKey>();
-            var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            var random = new Random();
+            // Sinh hoặc lấy 1 key chung cho toàn bộ danh sách gmail của trường này
+            string sharedKey = existingKeys.FirstOrDefault()?.ActivationKey ?? string.Empty;
 
-            foreach (var email in distinctEmails)
+            if (string.IsNullOrEmpty(sharedKey))
             {
-                var existingKey = existingKeys.FirstOrDefault(k => k.Email == email);
-                if (existingKey != null)
-                {
-                    resultKeys.Add(existingKey);
-                    continue;
-                }
-
-                string key = string.Empty;
+                var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                var random = new Random();
                 bool isKeyDuplicate = true;
                 while (isKeyDuplicate)
                 {
@@ -330,13 +358,25 @@ namespace BusinessLogic.Services
                     {
                         resultChars[i] = chars[random.Next(chars.Length)];
                     }
-                    key = "EDU-" + new string(resultChars);
-                    
-                    var existingKeyGlobal = await _unitOfWork.EduActivationKeyRepository.GetByKeyAsync(key);
+                    sharedKey = "EDU-" + new string(resultChars);
+
+                    var existingKeyGlobal = await _unitOfWork.EduActivationKeyRepository.GetByKeyAsync(sharedKey);
                     if (existingKeyGlobal == null)
                     {
                         isKeyDuplicate = false;
                     }
+                }
+            }
+
+            var resultKeys = new List<EduActivationKey>();
+
+            foreach (var email in distinctEmails)
+            {
+                var existingKey = existingKeys.FirstOrDefault(k => string.Equals(k.Email, email, StringComparison.OrdinalIgnoreCase));
+                if (existingKey != null)
+                {
+                    resultKeys.Add(existingKey);
+                    continue;
                 }
 
                 var newKey = new EduActivationKey
@@ -344,7 +384,7 @@ namespace BusinessLogic.Services
                     Id = Guid.NewGuid(),
                     RegistrationId = registrationId,
                     Email = email,
-                    ActivationKey = key,
+                    ActivationKey = sharedKey,
                     IsUsed = false
                 };
 
@@ -355,6 +395,37 @@ namespace BusinessLogic.Services
             registration.Status = "Completed";
             await _unitOfWork.EduRegistrationRepository.UpdateAsync(registration);
             await _unitOfWork.SaveAsync();
+
+            // Gửi email chứa mã kích hoạt cho tất cả các học sinh với delay giữa các lần gửi
+            foreach (var email in distinctEmails)
+            {
+                try
+                {
+                    string studentHtmlBody = $@"
+<div style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;"">
+    <h2 style=""color: #1a73e8; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; margin-top: 0;"">Mã Kích Hoạt Tài Khoản EDU - 4sCompany</h2>
+    <p>Xin chào,</p>
+    <p>Trường <strong>{registration.SchoolName}</strong> đã đăng ký tài khoản gói EDU cho bạn trên hệ thống hướng nghiệp 4sCompany.</p>
+    
+    <div style=""background-color: #f8f9fa; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;"">
+        <p style=""margin: 5px 0; font-size: 15px;"">Mã kích hoạt tài khoản của bạn là:</p>
+        <h3 style=""color: #2563eb; font-family: monospace; font-size: 24px; letter-spacing: 2px; margin: 10px 0;"">{sharedKey}</h3>
+    </div>
+    
+    <p style=""font-size: 14px;"">Vui lòng đăng nhập vào tài khoản của bạn tại 4sCompany và nhập mã trên tại mục <strong>Kích hoạt gói EDU</strong> để bắt đầu sử dụng đầy đủ tính năng.</p>
+    
+    <p style=""font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 25px; text-align: center;"">
+        Đây là email tự động từ hệ thống của 4sCompany. Vui lòng không trả lời trực tiếp email này.
+    </p>
+</div>";
+                    await _emailService.SendEmailAsync(email, "Ma kich hoat tai khoan EDU - 4sCompany", studentHtmlBody);
+                    await Task.Delay(300);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error sending EDU key email to {email}: {ex.Message}");
+                }
+            }
 
             return resultKeys.Select(rk => new EduActivationKeyResponseDto
             {
@@ -376,15 +447,20 @@ namespace BusinessLogic.Services
                 throw new ApplicationException("Không tìm thấy thông tin tài khoản người dùng.");
             }
 
-            var keyEntity = await _unitOfWork.EduActivationKeyRepository.GetByKeyAsync(activationKey);
-            if (keyEntity == null || keyEntity.IsUsed)
+            var keyEntity = await _unitOfWork.EduActivationKeyRepository.GetByKeyAndEmailAsync(activationKey, user.Email);
+            if (keyEntity == null)
             {
-                throw new ApplicationException("Mã kích hoạt không hợp lệ hoặc đã được sử dụng trước đó.");
+                var keyExists = await _unitOfWork.EduActivationKeyRepository.GetByKeyAsync(activationKey);
+                if (keyExists != null)
+                {
+                    throw new ApplicationException($"Mã kích hoạt này không dành cho email tài khoản ({user.Email}) của bạn.");
+                }
+                throw new ApplicationException("Mã kích hoạt không hợp lệ.");
             }
 
-            if (!string.Equals(keyEntity.Email, user.Email, StringComparison.OrdinalIgnoreCase))
+            if (keyEntity.IsUsed)
             {
-                throw new ApplicationException("Mã kích hoạt này không dành cho email tài khoản của bạn.");
+                throw new ApplicationException("Mã kích hoạt đã được sử dụng cho tài khoản này trước đó.");
             }
 
             if (keyEntity.Registration == null)
@@ -447,6 +523,9 @@ namespace BusinessLogic.Services
             var r = await _unitOfWork.EduRegistrationRepository.GetByTransactionCodeAsync(transactionCode);
             if (r == null) return null;
 
+            var keys = await _unitOfWork.EduActivationKeyRepository.GetAsync(filter: k => k.RegistrationId == r.Id);
+            var key = keys.FirstOrDefault()?.ActivationKey;
+
             return new EduRegistrationResponseDto
             {
                 Id = r.Id,
@@ -460,7 +539,8 @@ namespace BusinessLogic.Services
                 Status = r.Status,
                 PlanId = r.PlanId,
                 PlanName = r.Plan?.Name,
-                TransactionCode = r.TransactionCode
+                TransactionCode = r.TransactionCode,
+                Key = key
             };
         }
 
@@ -476,6 +556,9 @@ namespace BusinessLogic.Services
             await _unitOfWork.EduRegistrationRepository.UpdateAsync(r);
             await _unitOfWork.SaveAsync();
 
+            var keys = await _unitOfWork.EduActivationKeyRepository.GetAsync(filter: k => k.RegistrationId == r.Id);
+            var key = keys.FirstOrDefault()?.ActivationKey;
+
             return new EduRegistrationResponseDto
             {
                 Id = r.Id,
@@ -489,7 +572,8 @@ namespace BusinessLogic.Services
                 Status = r.Status,
                 PlanId = r.PlanId,
                 PlanName = r.Plan?.Name,
-                TransactionCode = r.TransactionCode
+                TransactionCode = r.TransactionCode,
+                Key = key
             };
         }
     }

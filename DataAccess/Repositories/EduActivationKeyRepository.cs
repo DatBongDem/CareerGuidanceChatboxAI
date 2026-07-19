@@ -27,5 +27,14 @@ namespace DataAccess.Repositories
             return await _dbSet
                 .FirstOrDefaultAsync(eak => eak.Email == email && eak.RegistrationId == registrationId);
         }
+
+        public async Task<EduActivationKey?> GetByKeyAndEmailAsync(string key, string email)
+        {
+            return await _dbSet
+                .Include(eak => eak.Registration)
+                    .ThenInclude(r => r!.Plan)
+                .Include(eak => eak.UsedByUser)
+                .FirstOrDefaultAsync(eak => eak.ActivationKey == key && eak.Email.ToLower() == email.ToLower());
+        }
     }
 }
