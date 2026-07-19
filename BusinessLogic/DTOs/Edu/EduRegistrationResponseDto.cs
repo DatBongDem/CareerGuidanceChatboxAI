@@ -16,5 +16,6 @@ namespace BusinessLogic.DTOs.Edu
         public Guid PlanId { get; set; }
         public string? PlanName { get; set; }
         public string? TransactionCode { get; set; }
+        public string? Key { get; set; }
     }
 }
