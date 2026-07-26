@@ -172,9 +172,12 @@ namespace BusinessLogic.Services
 
         public async Task<IEnumerable<FeedbackResponseDto>> GetAllFeedbacksAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
+            DateTime? utcStart = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value.Date, DateTimeKind.Utc) : null;
+            DateTime? utcEnd = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc) : null;
+
             var list = await _unitOfWork.FeedbackResponseRepository.GetAsync(
-                filter: r => (!startDate.HasValue || r.SubmittedAt >= startDate.Value) &&
-                             (!endDate.HasValue || r.SubmittedAt <= endDate.Value),
+                filter: r => (!utcStart.HasValue || r.SubmittedAt >= utcStart.Value) &&
+                             (!utcEnd.HasValue || r.SubmittedAt <= utcEnd.Value),
                 orderBy: q => q.OrderByDescending(r => r.SubmittedAt),
                 includeProperties: "Answers.Question"
             );
@@ -195,8 +198,8 @@ namespace BusinessLogic.Services
         public async Task<byte[]> ExportFeedbacksToExcelAsync(DateTime startDate, DateTime endDate)
         {
             // Normalize dates to start of day and end of day
-            var normalizedStart = startDate.Date;
-            var normalizedEnd = endDate.Date.AddDays(1).AddTicks(-1);
+            var normalizedStart = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Utc);
+            var normalizedEnd = DateTime.SpecifyKind(endDate.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
 
             // Fetch responses in range
             var responses = (await _unitOfWork.FeedbackResponseRepository.GetAsync(
@@ -341,7 +344,7 @@ namespace BusinessLogic.Services
                 UserEmail = r.UserEmail,
                 UserFullName = r.UserFullName,
                 SubmittedAt = r.SubmittedAt,
-                Answers = r.Answers.Select(a => new FeedbackAnswerDto
+                Answers = (r.Answers ?? new List<FeedbackAnswer>()).Select(a => new FeedbackAnswerDto
                 {
                     QuestionId = a.QuestionId,
                     QuestionText = a.Question?.QuestionText ?? "N/A",
