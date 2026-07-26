@@ -76,7 +76,9 @@ namespace WebAPI
             builder.Services.AddScoped<IEduRegistrationRepository, EduRegistrationRepository>();
             builder.Services.AddScoped<IEduActivationKeyRepository, EduActivationKeyRepository>();
             builder.Services.AddScoped<IOperationalExpenseRepository, OperationalExpenseRepository>();
-
+            builder.Services.AddScoped<IDailyWebVisitRepository, DailyWebVisitRepository>();
+            builder.Services.AddScoped<IDailyUserVisitRepository, DailyUserVisitRepository>();
+            builder.Services.AddScoped<IWebStatsService, WebStatsService>();
 
 
             builder.Services.Configure<EmailSettings>(
