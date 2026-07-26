@@ -57,7 +57,8 @@ namespace DataAccess.DataContext
         public DbSet<EduRegistration> EduRegistrations { get; set; }
         public DbSet<EduActivationKey> EduActivationKeys { get; set; }
         public DbSet<OperationalExpense> OperationalExpenses { get; set; }
-
+        public DbSet<DailyWebVisit> DailyWebVisits { get; set; }
+        public DbSet<DailyUserVisit> DailyUserVisits { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -181,6 +182,19 @@ namespace DataAccess.DataContext
                 .WithMany()
                 .HasForeignKey(eak => eak.UsedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // =========================
+            // DailyUserVisit
+            // =========================
+            modelBuilder.Entity<DailyUserVisit>()
+                .HasOne(duv => duv.User)
+                .WithMany()
+                .HasForeignKey(duv => duv.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DailyUserVisit>()
+                .HasIndex(duv => new { duv.Date, duv.UserId })
+                .IsUnique();
         }
     }
 }

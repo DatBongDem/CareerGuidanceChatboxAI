@@ -42,6 +42,8 @@ namespace DataAccess.Repositories
         public IEduRegistrationRepository EduRegistrationRepository { get; }
         public IEduActivationKeyRepository EduActivationKeyRepository { get; }
         public IOperationalExpenseRepository OperationalExpenseRepository { get; }
+        public IDailyWebVisitRepository DailyWebVisitRepository { get; }
+        public IDailyUserVisitRepository DailyUserVisitRepository { get; }
         public UnitOfWork(ApplicationDbContext context)
         { }
         public UnitOfWork(
@@ -98,6 +100,8 @@ namespace DataAccess.Repositories
             EduRegistrationRepository = new EduRegistrationRepository(_context);
             EduActivationKeyRepository = new EduActivationKeyRepository(_context);
             OperationalExpenseRepository = new OperationalExpenseRepository(_context);
+            DailyWebVisitRepository = new DailyWebVisitRepository(_context);
+            DailyUserVisitRepository = new DailyUserVisitRepository(_context);
             RefreshTokenRepository =
                 refreshTokenRepository;
 
