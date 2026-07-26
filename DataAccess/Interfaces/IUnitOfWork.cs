@@ -53,6 +53,9 @@ namespace DataAccess.Interfaces
         IOperationalExpenseRepository OperationalExpenseRepository { get; }
         IDailyWebVisitRepository DailyWebVisitRepository { get; }
         IDailyUserVisitRepository DailyUserVisitRepository { get; }
+        IFeedbackQuestionRepository FeedbackQuestionRepository { get; }
+        IFeedbackResponseRepository FeedbackResponseRepository { get; }
+        IFeedbackAnswerRepository FeedbackAnswerRepository { get; }
         
         Task<int> SaveAsync();
     }

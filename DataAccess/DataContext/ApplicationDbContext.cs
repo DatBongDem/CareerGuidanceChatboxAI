@@ -59,6 +59,9 @@ namespace DataAccess.DataContext
         public DbSet<OperationalExpense> OperationalExpenses { get; set; }
         public DbSet<DailyWebVisit> DailyWebVisits { get; set; }
         public DbSet<DailyUserVisit> DailyUserVisits { get; set; }
+        public DbSet<FeedbackQuestion> FeedbackQuestions { get; set; }
+        public DbSet<FeedbackResponse> FeedbackResponses { get; set; }
+        public DbSet<FeedbackAnswer> FeedbackAnswers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -195,6 +198,21 @@ namespace DataAccess.DataContext
             modelBuilder.Entity<DailyUserVisit>()
                 .HasIndex(duv => new { duv.Date, duv.UserId })
                 .IsUnique();
+
+            // =========================
+            // Feedback
+            // =========================
+            modelBuilder.Entity<FeedbackAnswer>()
+                .HasOne(fa => fa.Response)
+                .WithMany(fr => fr.Answers)
+                .HasForeignKey(fa => fa.ResponseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeedbackAnswer>()
+                .HasOne(fa => fa.Question)
+                .WithMany()
+                .HasForeignKey(fa => fa.QuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
