@@ -44,6 +44,9 @@ namespace DataAccess.Repositories
         public IOperationalExpenseRepository OperationalExpenseRepository { get; }
         public IDailyWebVisitRepository DailyWebVisitRepository { get; }
         public IDailyUserVisitRepository DailyUserVisitRepository { get; }
+        public IFeedbackQuestionRepository FeedbackQuestionRepository { get; }
+        public IFeedbackResponseRepository FeedbackResponseRepository { get; }
+        public IFeedbackAnswerRepository FeedbackAnswerRepository { get; }
         public UnitOfWork(ApplicationDbContext context)
         { }
         public UnitOfWork(
@@ -102,6 +105,9 @@ namespace DataAccess.Repositories
             OperationalExpenseRepository = new OperationalExpenseRepository(_context);
             DailyWebVisitRepository = new DailyWebVisitRepository(_context);
             DailyUserVisitRepository = new DailyUserVisitRepository(_context);
+            FeedbackQuestionRepository = new FeedbackQuestionRepository(_context);
+            FeedbackResponseRepository = new FeedbackResponseRepository(_context);
+            FeedbackAnswerRepository = new FeedbackAnswerRepository(_context);
             RefreshTokenRepository =
                 refreshTokenRepository;
 

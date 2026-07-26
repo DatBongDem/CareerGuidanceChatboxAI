@@ -79,6 +79,10 @@ namespace WebAPI
             builder.Services.AddScoped<IDailyWebVisitRepository, DailyWebVisitRepository>();
             builder.Services.AddScoped<IDailyUserVisitRepository, DailyUserVisitRepository>();
             builder.Services.AddScoped<IWebStatsService, WebStatsService>();
+            builder.Services.AddScoped<IFeedbackQuestionRepository, FeedbackQuestionRepository>();
+            builder.Services.AddScoped<IFeedbackResponseRepository, FeedbackResponseRepository>();
+            builder.Services.AddScoped<IFeedbackAnswerRepository, FeedbackAnswerRepository>();
+            builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 
 
             builder.Services.Configure<EmailSettings>(
